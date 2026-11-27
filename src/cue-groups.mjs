@@ -23,11 +23,57 @@ export function validateCueGroups(deck){
   previousEnd=start+ids.length-1;
  }
 }
+// Legacy packages may lack sourceBlockIds. Only accept a unique exact text
+// match starting at the existing anchor and ending before the next cue.
+// Explicit reviewed membership always takes precedence.
+const canon=s=>String(s??'').normalize('NFC').replace(/\s+/gu,'');
+function lyricText(b){
+ const text=b.text;
+ // DOCX may include an explicit actor prefix in the original paragraph.
+ const tab=text.indexOf('\t');
+ return tab>=0&&canon(text.slice(0,tab))===canon(b.actor)&&canon(b.actor)?text.slice(tab+1):text;
+}
+function matchesFrame(frame,blocks){
+ if(frame.kind==='solo'){
+  if(blocks.some(b=>b.sourceCells))return false;
+  return canon(blocks.map(lyricText).join('\n'))===canon(frame.columns[0].lines.join('\n'));
+ }
+ if(frame.kind==='overlap'){
+  const n=frame.columns.length;
+  if(blocks.some(b=>!Array.isArray(b.sourceCells)||b.sourceCells.length!==n))return false;
+  return frame.columns.every((c,i)=>canon(c.lines.join('\n'))===canon(blocks.map(b=>b.sourceCells[i]).join('\n')));
+ }
+ return false;
+}
+export function exactLegacyRange(deck,index,positions=new Map(deck.blocks.map((b,i)=>[b.id,i]))){
+ const frame=deck.frames[index],start=positions.get(frame.blockId),anchor=deck.blocks[start];
+ if(!anchor||!['solo','overlap'].includes(frame.kind))return anchor?[anchor.id]:null;
+ const end=index+1<deck.frames.length?positions.get(deck.frames[index+1].blockId):deck.blocks.length;
+ if(end===undefined||end<=start)return null;
+ const candidates=[],range=[];
+ for(let i=start;i<end;i++){
+  const b=deck.blocks[i];
+  if(b.kind!=='lyric'||b.sceneId!==anchor.sceneId||!canon(b.text))break;
+  range.push(b);
+  if(matchesFrame(frame,range))candidates.push(range.map(x=>x.id));
+ }
+ return candidates.length===1?candidates[0]:null;
+}
 export function buildCueGroups(deck){
  const at=new Map(),covered=new Set(),legacy=deck.frames.filter(f=>!Array.isArray(f.sourceBlockIds)).length;
+ const positions=new Map(deck.blocks.map((b,i)=>[b.id,i]));
+ const explicitOwners=new Set(deck.frames.flatMap(f=>f.sourceBlockIds||[]));
+ let inferred=0,unresolved=0;
+ const ranges=new Map();
  deck.frames.forEach((f,i)=>{
-  const ids=f.sourceBlockIds;
-  if(!ids||ids.length<2)return;
+  let ids=f.sourceBlockIds;
+  if(!ids){
+   ids=exactLegacyRange(deck,i,positions);
+   if(ids&&ids.some(id=>explicitOwners.has(id)))ids=null;
+   if(!ids){unresolved++;ids=[f.blockId]}else inferred++;
+  }
+  ranges.set(i,ids);
+  if(ids.length<2)return;
   at.set(ids[0],{key:f.id,index:i,ids});ids.forEach(id=>covered.add(id));
  });
  const byId=new Map(deck.blocks.map(b=>[b.id,b]));
@@ -37,5 +83,5 @@ export function buildCueGroups(deck){
   if(g)units.push({...g,blocks:g.ids.map(id=>byId.get(id))});
   else if(!covered.has(block.id))units.push({key:block.id,blocks:[block]});
  }
- return {units,legacy};
+ return {units,legacy,inferred,unresolved,ranges};
 }

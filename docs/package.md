@@ -15,3 +15,5 @@ Keep stable IDs across edits only when identity is confirmed. Import does not ov
 
 ## Reviewed source groups (C layout)
 Optional frame field `sourceBlockIds: string[]` contains every contiguous source block contributing to the display frame, in original order, starting at blockId. Use one ID for place/black, one or more lyric blocks for solo/overlap. A single table row may contain multiple displayed lines; a two-line slide may span two original rows. Do not infer membership from neighboring cards or repeated lyrics. The validator rejects overlapping groups, wrong anchors, cross-scene and non-lyric membership. Older packages remain importable with anchor-only emphasis; load a reviewed package to enable full groups. Group membership is included in revision comparison. The audience frame is unchanged by grouping.
+
+Legacy grouping is a read-only compatibility feature, not a source mapping migration. Exact matches are bounded by the next anchor and cannot cross non-lyric blocks or scenes. Explicit reviewed sourceBlockIds take priority. Unknown ranges require a reviewed package; do not guess based on speaker or line count alone.

@@ -97,3 +97,13 @@
 
 /* Local font selector changes audience typography only, not script cards. */
 .caption-font-control{display:flex;align-items:center;gap:5px;font-size:11px;white-space:nowrap;color:#b8c2d1}.caption-font-control select{max-width:145px;background:#252830;color:#dce5f6;border:1px solid #393e48;border-radius:4px;padding:5px 6px;font-size:11px}.caption-font-control select:disabled{opacity:.5}.caption-font-control select:focus-visible{outline:2px solid #8ab3ff}
+
+/* A: section headings are typographic separators, not reading cards. */
+.console .block.heading.script-divider{background:transparent;border:0;border-radius:0;box-shadow:none;padding:12px 4px;margin:6px 0;color:#c3cddd;line-height:1.4;text-align:center}
+.console .script-divider .divider-rule{display:flex;align-items:center;justify-content:center;gap:12px}
+.console .script-divider .divider-rule>span{height:1px;background:#414b5b;min-width:16px;flex:1}
+.console .script-divider .divider-text{max-width:88%;min-width:0;font-size:.86em;font-weight:650;overflow-wrap:anywhere;word-break:keep-all;text-align:center;white-space:pre-wrap}
+.console .script-divider .divider-cues{display:flex;justify-content:center;gap:8px;margin-top:7px}
+.console .script-divider .divider-cues .cue-tag{margin-left:0}
+.console .script-divider.search-hit{outline:1px solid #86764c;outline-offset:2px}
+.console .script-divider.active-hit{outline:2px solid #e1bc75;outline-offset:2px}

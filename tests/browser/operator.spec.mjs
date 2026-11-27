@@ -112,3 +112,15 @@ test('bundled fonts load locally, switch both monitors without advancing cue, pe
  }
  await selector.selectOption('noto-serif');await expect(page.locator('.program-frame')).toHaveAttribute('data-font','noto-serif');await page.reload();await expect(selector).toHaveValue('noto-serif');expect(external).toEqual([]);
 });
+
+test('legacy two-line audience frame groups both source cards; heading is a centered separator with cue preserved',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);d.productionId='legacy-frame-fixture';d.title='프레임 연결 테스트';
+ d.blocks[3].text='배우 A\t새로운 하루를 열어';d.blocks.splice(4,0,{...d.blocks[3],id:'legacy-second',text:'우리의 길을 찾아가'});d.frames[2].columns[0].lines=['새로운 하루를 열어\n우리의 길을 찾아가'];
+ d.blocks.splice(0,0,{id:'heading-test',kind:'heading',actor:'',sceneId:'s1',text:'M01. 테스트 넘버 / 배우 A'});
+ d.frames.unshift({id:'heading-black',blockId:'heading-test',kind:'black',trigger:'공연 시작',columns:[]});
+ await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();await page.getByLabel('공연 데이터 파일').setInputFiles({name:'legacy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});await page.locator('.version').filter({hasText:'프레임 연결 테스트'}).getByRole('button',{name:'활성화'}).click();await expect(page.locator('.brand')).toContainText('프레임 연결 테스트');await page.getByRole('button',{name:'닫기',exact:true}).click();
+ const heading=page.locator('.script-divider');await expect(heading).toHaveCount(1);await expect(heading.locator('.divider-text')).toHaveCSS('text-align','center');await expect(heading).toHaveCSS('background-color','rgba(0, 0, 0, 0)');await expect(heading.getByRole('button',{name:'큐 001 미리보기'})).toContainText('BLACK');
+ await go(page).click();await go(page).click();await go(page).click();const next=page.locator('.cue-group.next');await expect(next.locator('[data-cue-status=NEXT]')).toHaveCount(2);
+ await go(page).click();const live=page.locator('.cue-group.live');await expect(live.locator('[data-cue-status=LIVE]')).toHaveCount(2);await expect(live).toContainText('우리의 길을 찾아가');await expect(page.locator('.live-label')).toContainText('004 / 10');await expect(live.getByRole('button',{name:'큐 004 미리보기'})).toHaveCount(1);
+ await go(page).click();await expect(page.locator('.live-label')).toContainText('005 / 10');
+});
