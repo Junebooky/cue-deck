@@ -138,3 +138,8 @@ test('unanchored drama between black cue and lyrics gets its own reading step',a
  await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();await page.getByLabel('공연 데이터 파일').setInputFiles({name:'reader.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});await page.locator('.version').filter({hasText:'드라마 따라가기 테스트'}).getByRole('button',{name:'활성화'}).click();await expect(page.locator('.brand')).toContainText('드라마 따라가기 테스트');await page.getByRole('button',{name:'닫기',exact:true}).click();
  await go(page).click();await go(page).click();await page.keyboard.press('ArrowRight');await expect(page.locator('#block-extra-drama')).toHaveClass(/reading-hold/);await expect(page.locator('.live-label')).toContainText('002 / 9');await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('003 / 9');
 });
+
+test('explicit arrow navigation scrolls to drama even with automatic FOLLOW disabled',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await page.getByRole('button',{name:'FOLLOW ON'}).click();await expect(page.getByRole('button',{name:'FOLLOW OFF'})).toBeVisible();
+ await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('001 / 9');await page.keyboard.press('ArrowRight');await expect(page.locator('#block-b2')).toHaveClass(/reading-hold/);await expect(page.locator('#block-b2')).toBeInViewport();await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('002 / 9');
+});

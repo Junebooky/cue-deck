@@ -50,3 +50,5 @@ Legacy data without sourceBlockIds can form a group only when a unique exact tex
 
 ## Manual reader steps
 Arrow Right/Left (or 대본 buttons) move through the ordered cue anchors plus every unanchored drama/NAR block. Entering a drama/NAR reading-only step manually blacks the audience if necessary, retains the last cue number, and shows READ · BLACK on the source card. Already-black steps do not resend the frame. Entering a mapped cue with arrows sends that cue once. Space/GO retains direct audience cue navigation, including jump confirmation; it intentionally bypasses reading-only steps. Headings and directions without cues are context, not mandatory stops. B never restores a lyric during a reading hold. No audience data change or extra numbered cues. FOLLOW controls scrolling, not step membership.
+
+Explicit arrow navigation always scrolls to the selected script step, even with FOLLOW OFF (which controls automatic cue following). Empty unanchored drama/NAR blocks are skipped; anchored BLACK cues remain. Reading hold state clears on production or output session changes.

@@ -6,7 +6,7 @@ export function buildReaderSteps(deck){
  for(const b of deck.blocks){
   const indices=anchors.get(b.id);
   if(indices){for(const index of indices)steps.push({key:'cue:'+index,index,blockId:b.id,kind:'cue'});continue}
-  if(b.kind==='dialogue'||b.kind==='nar')steps.push({key:'read:'+b.id,index:null,blockId:b.id,kind:'hold'});
+  if((b.kind==='dialogue'||b.kind==='nar')&&b.text.trim())steps.push({key:'read:'+b.id,index:null,blockId:b.id,kind:'hold'});
  }
  const positions=new Map(steps.map((s,i)=>[s.key,i]));
  return {steps,positions};
