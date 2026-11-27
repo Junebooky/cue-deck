@@ -9,10 +9,10 @@ import {compareRevisions,assertActivation} from '../src/revision-review.mjs';
 import {describeDisplays,selectOutputDisplay,coversDisplay,testView} from '../src/display-policy.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
 let operator=null,audience=null,displayId=null,ready=false,ack=-1,deck=validatePackage(demo),state=initialPlayback(),versions=new Map([['demo',deck]]),active='demo';
-let ackTimer=null,startTimer=null,revision=0,changingDeck=false,outputError='',testing=false,started=false,ackDeadline=0;
+let ackTimer=null,startTimer=null,placementTimer=null,revision=0,changingDeck=false,outputError='',testing=false,started=false,ackDeadline=0;
 const mac=process.platform==='darwin';
 const dataDir=()=>path.join(app.getPath('userData'),'shows');
-const snapshot=()=>({revision:++revision,deck,state,active,versions:[...versions].map(([id,d])=>({id,title:d.title,revision:d.revision,count:d.frames.length})),output:{open:!!audience&&!audience.isDestroyed(),ready,displayId,ack,error:outputError,testing}});
+const snapshot=()=>({revision:++revision,deck,state,active,versions:[...versions].map(([id,d])=>({id,title:d.title,revision:d.revision,count:d.frames.length})),output:{open:!!audience&&!audience.isDestroyed(),ready,displayId,ack,error:outputError,testing,testView:testing?output().view:null}});
 const output=()=>({sequence:state.sequence,view:testing?testView(displays().find(d=>d.id===displayId)??{label:'Display',width:0,height:0}):viewFor(deck,state)});
 const notify=()=>{if(operator&&!operator.isDestroyed())operator.webContents.send('deck:state-update',snapshot())};
 function validPlacement(w){
@@ -37,7 +37,7 @@ function requireAudience(e){if(!audience||e.sender!==audience.webContents)throw 
 function win(options,mode){const w=new BrowserWindow({...options,backgroundColor:'#000000',webPreferences:{preload:path.join(here,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:mode!=='audience'}});w.webContents.setWindowOpenHandler(()=>({action:'deny'}));w.webContents.on('will-navigate',e=>e.preventDefault());return w}
 function loadWindow(w,mode){return w.loadFile(path.join(here,'../dist/index.html'),{query:{mode}})}
 function displays(){return describeDisplays(screen.getAllDisplays(),operator&&!operator.isDestroyed()?screen.getDisplayMatching(operator.getBounds()).id:null,screen.getPrimaryDisplay().id)}
-function stopOutput(message=''){clearTimeout(ackTimer);clearTimeout(startTimer);ready=false;ack=-1;started=false;testing=false;outputError=message;displayId=null;state=playback(state,{type:'BLACK'},deck.frames.length);const old=audience;audience=null;if(old&&!old.isDestroyed()){old.hide();old.destroy()}notify()}
+function stopOutput(message=''){clearTimeout(ackTimer);clearTimeout(startTimer);clearInterval(placementTimer);ready=false;ack=-1;started=false;testing=false;outputError=message;displayId=null;state=playback(state,{type:'BLACK'},deck.frames.length);const old=audience;audience=null;if(old&&!old.isDestroyed()){old.hide();old.destroy()}notify()}
 async function loadVersions(){await mkdir(dataDir(),{recursive:true});for(const file of await readdir(dataDir())){if(!/^[a-f0-9]{64}\.json$/.test(file))continue;try{const raw=await readFile(path.join(dataDir(),file),'utf8');if(createHash('sha256').update(raw).digest('hex')!==file.slice(0,-5))continue;versions.set(file.slice(0,-5),validatePackage(JSON.parse(raw)))}catch{}}try{const saved=(await readFile(path.join(dataDir(),'active'),'utf8')).trim();if(versions.has(saved)){active=saved;deck=versions.get(saved)}}catch{}}
 async function persistActive(id){const temp=path.join(dataDir(),'active.tmp');await writeFile(temp,id,'utf8');await rename(temp,path.join(dataDir(),'active'))}
 function register(){
@@ -66,7 +66,7 @@ function register(){
    const deadline=Date.now()+5000;
    while(audience===w&&!w.isDestroyed()&&!validPlacement(w)&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,100));
    if(audience!==w||!validPlacement(w))throw new Error(outputError||'선택한 디스플레이에 전체 화면을 배치하지 못했습니다. 확장 모드를 확인하세요.');
-   clearTimeout(startTimer);started=true;operator?.focus();sendOutput();notify();return snapshot();
+   clearTimeout(startTimer);started=true;operator?.focus();sendOutput();placementTimer=setInterval(()=>{if(audience===w&&started&&!validPlacement(w))failOutput('관객 화면이 선택한 디스플레이에서 벗어났습니다. 다시 연결하세요.')},1000);notify();return snapshot();
   }catch(err){if(audience===w)failOutput(err.message);throw err}
  });
  ipcMain.handle('deck:stop',e=>{requireOperator(e);stopOutput();return snapshot()});
