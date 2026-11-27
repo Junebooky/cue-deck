@@ -14,6 +14,7 @@ import {currentTarget} from './rehearsal.mjs';
 import {shortcutLetter,blockedShortcutTarget} from './shortcuts.mjs';
 import {useRehearsal} from './useRehearsal.js';
 import RehearsalNotes from './RehearsalNotes.jsx';
+import QuickErrorMemo from './QuickErrorMemo.jsx';
 import {MIN_SCALE,MAX_SCALE,SCALE_STEP,DEFAULT_SCALE,readScale,advanceStyleSequence} from './caption-scale.mjs';
 import {presentCaption} from './caption-presentation.mjs';
 import {useCaptionFit} from './useCaptionFit.js';
@@ -114,6 +115,8 @@ function Operator(){
  const markTarget=useMemo(()=>currentTarget(deck,snap.active,state.index,holdStep,grouping.ranges),[deck,snap.active,state.index,holdStep,grouping]);
  const canMark=libraryReady&&!busy&&rehearsal.enabled&&!!markTarget&&!output.testing&&(!output.open||output.ready);
  const [shortcutNotice,setShortcutNotice]=useState('');
+ const [quickNote,setQuickNote]=useState(null);
+ const closeQuickMemo=()=>{setQuickNote(null);setDialog(null);document.activeElement?.blur()};
  const shortcutTimer=useRef(null);
  const showShortcutNotice=message=>{setShortcutNotice(message);clearTimeout(shortcutTimer.current);shortcutTimer.current=setTimeout(()=>setShortcutNotice(''),2400)};
  useEffect(()=>()=>clearTimeout(shortcutTimer.current),[]);
@@ -173,7 +176,8 @@ function Operator(){
  const triggerMark=()=>{
   if(!rehearsal.enabled){showShortcutNotice('E · 리허설 노트에서 새 리허설을 시작하세요');return}
   if(!canMark||inFlight.current){showShortcutNotice('E · 활성 대본 및 송출 준비 상태를 확인하세요');return}
-  rehearsal.mark(markTarget);
+  const note=rehearsal.mark(markTarget);
+  if(note){setQuickNote(note);setDialog('quick-error-memo')}
  };
  // Capture phase avoids losing B/E when a focused console button handles input.
  // Keep editors, settings dialogs, IME composition, and resize handles protected.
@@ -185,6 +189,7 @@ function Operator(){
   const key=String(e.key??'').toLowerCase();
   const editing=blockedShortcutTarget(e.target)||blockedShortcutTarget(document.activeElement);
   if(key==='escape'&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.shiftKey&&!e.repeat){
+   if(dialog==='quick-error-memo')return; // The memo handles ESC, including when its text field is focused.
    if(editing)return; // Search and edit fields retain their own ESC behavior.
    if(dialog){e.preventDefault();if(!busy)setDialog(null);return}
    if(output.open){e.preventDefault();requestEnd();return}
@@ -296,7 +301,7 @@ function Operator(){
  {(rehearsal.message||rehearsal.error)&&<div className={rehearsal.error?'rehearsal-feedback failure':'rehearsal-feedback'} role="status">{rehearsal.error||rehearsal.message}</div>}
  <footer className="transport">{rehearsal.enabled&&<button className="mark-button" title="E / Ctrl+E · 현재 활성 대본 오류 기록" disabled={!canMark} onClick={triggerMark}>⚑ E · 오류 기록</button>}<button disabled={disabled||!previousRead} onClick={()=>stepReader(-1)} title="이전 대본 단계 (←)">← 대본</button><button disabled={disabled||!nextRead} onClick={()=>stepReader(1)} title="다음 대본 단계 (→)">대본 →</button><button className="primary go" disabled={disabled||next===null} onClick={go}>{armedJump?'선택 큐 확인':'GO'} <small>SPACE · 다음 송출 큐</small></button><button title="B / Ctrl+B · BLACK / RESTORE" onClick={triggerBlack} disabled={!libraryReady||busy||(!holdStep&&!output.testing&&state.blackout&&state.index>=0&&disabled)}>■ {!holdStep&&!output.testing&&state.blackout&&state.index>=0?'RESTORE':'BLACK'}</button></footer>
  <div className="foot" hidden={focusMode}><span>LOCAL PERFORMANCE CONSOLE · {deck.productionId==='demo'?'테스트 대본':'공연 대본'}</span><span className="progress-label">{Math.max(0,state.index+1)} / {frames.length}</span><progress aria-label="공연 진행률" max={frames.length} value={Math.max(0,state.index+1)}/></div>
- {dialog&&<div className="overlay" role="dialog" aria-modal="true" aria-label={dialog==='operator-settings'?'운영 설정':dialog==='numbers'?'넘버 검색':dialog==='search-jump'?'검색 위치 송출 확인':dialog==='end-output'?'공연 종료 확인':undefined}><div className={['review','rehearsal','caption-widths','caption-style','long-review','numbers'].includes(dialog)?'modal review-modal':'modal'}><div className="panel-title">{dialog==='operator-settings'?'운영 설정 · FOLLOW':dialog==='numbers'?'넘버 검색 · 리허설':dialog==='search-jump'?'검색 위치 송출 확인':dialog==='caption-style'?'자막 스타일 설정':dialog==='long-review'?'장문 가사 검수':dialog==='caption-widths'?'동시 가창 자막 검수':dialog==='end-output'?'공연 종료 확인':dialog==='rehearsal'?'REHEARSAL NOTES':dialog==='caption-scale'?'관객 자막 크기':dialog==='output'?'공연 송출 설정':dialog==='jump'?'비순차 송출 확인':dialog==='review'?'SCRIPT REVISION REVIEW':'SCRIPT MANAGER'}<button onClick={e=>{e.currentTarget.blur();setDialog(null)}}>닫기</button></div>{dialog==='operator-settings'?<div className="operator-settings">
+ {dialog&&<div className="overlay" role="dialog" aria-modal="true" aria-label={dialog==='quick-error-memo'?'오류 메모':dialog==='operator-settings'?'운영 설정':dialog==='numbers'?'넘버 검색':dialog==='search-jump'?'검색 위치 송출 확인':dialog==='end-output'?'공연 종료 확인':undefined}><div className={['review','rehearsal','caption-widths','caption-style','long-review','numbers'].includes(dialog)?'modal review-modal':'modal'}><div className="panel-title">{dialog==='quick-error-memo'?'오류 메모':dialog==='operator-settings'?'운영 설정 · FOLLOW':dialog==='numbers'?'넘버 검색 · 리허설':dialog==='search-jump'?'검색 위치 송출 확인':dialog==='caption-style'?'자막 스타일 설정':dialog==='long-review'?'장문 가사 검수':dialog==='caption-widths'?'동시 가창 자막 검수':dialog==='end-output'?'공연 종료 확인':dialog==='rehearsal'?'REHEARSAL NOTES':dialog==='caption-scale'?'관객 자막 크기':dialog==='output'?'공연 송출 설정':dialog==='jump'?'비순차 송출 확인':dialog==='review'?'SCRIPT REVISION REVIEW':'SCRIPT MANAGER'}<button onClick={e=>{e.currentTarget.blur();if(dialog==='quick-error-memo')closeQuickMemo();else setDialog(null)}}>닫기</button></div>{dialog==='quick-error-memo'&&quickNote?<QuickErrorMemo key={quickNote.events.at(-1).id} note={quickNote} onSave={rehearsal.appendMemo} onClose={closeQuickMemo} error={rehearsal.error}/>:dialog==='operator-settings'?<div className="operator-settings">
  <p>현재 LIVE 또는 READ 카드의 위치를 지정합니다. 방향키 이동은 FOLLOW OFF에서도 항상 스크롤되며, 다음 카드가 잘리지 않도록 위치를 조정합니다.</p>
  <div className="operator-anchor-options" role="group" aria-label="자동 스크롤 위치">{[['top','상단'],['ten','10%'],['center','중앙']].map(([v,label])=><button key={v} aria-pressed={followAnchor===v} onClick={()=>setPref('followAnchor',v)}>{label}</button>)}</div>
  <div className="operator-settings-row"><span>대본 글자 크기</span><button aria-label="대본 글자 작게" disabled={size<=MIN_READER_FONT} onClick={()=>setPref('fontSize',size-1)}>A−</button><button aria-label="대본 글자 크기 초기화" onClick={()=>setPref('fontSize',defaultPrefs.fontSize)}>{size}px</button><button aria-label="대본 글자 크게" disabled={size>=MAX_READER_FONT} onClick={()=>setPref('fontSize',size+1)}>A+</button></div>
