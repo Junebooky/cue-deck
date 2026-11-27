@@ -36,7 +36,21 @@ function matchesFrame(frame,blocks){
  }
  if(frame.kind==='overlap'){
   const n=frame.columns.length;
-  if(blocks.some(b=>!Array.isArray(b.sourceCells)||b.sourceCells.length!==n))return false;
+  if(blocks.some(b=>!Array.isArray(b.sourceCells)||b.sourceCells.length!==n)){
+   // Inline duet paragraphs: a marked red parenthetical suffix is the second lane.
+   // Exact per-row matches only, no proximity/speaker heuristic.
+   if(n!==2||blocks.some(b=>b.sourceCells)||blocks.length!==frame.columns[0].lines.length)return false;
+   return blocks.every((b,i)=>{
+    const source=displaySource(b),match=source.text.match(/^([\s\S]*?)\s*\(([^()]*)\)?\s*$/u);
+    if(!match||!source.runs?.some(r=>r.red&&r.text.trim()))return false;
+    let offset=0,red='';
+    const start=source.text.indexOf('(',match[1].length);
+    for(const r of source.runs){const end=offset+r.text.length;if(r.red&&end>start)red+=r.text.slice(Math.max(0,start-offset));offset=end}
+    if(canon(red)!==canon(source.text.slice(start)))return false;
+    const rhs=match[2].replace(new RegExp('^'+frame.columns[1].actor.replace(/[.*+?^${}()|[\]\\]/g,'\\if(blocks.some(b=>!Array.isArray(b.sourceCells)||b.sourceCells.length!==n))return false;')+'\\s*[:：]\\s*'),'');
+    return canon(match[1])===canon(frame.columns[0].lines[i])&&canon(rhs)===canon(frame.columns[1].lines[i]);
+   });
+  }
   const rows=lines=>lines.flatMap(line=>line.replace(/\r\n/g,'\n').split('\n')).map(canon);
   // Preserve empty rows, rather than accepting a shifted simultaneous vocal.
   return frame.columns.every((c,i)=>JSON.stringify(rows(c.lines))===JSON.stringify(rows(blocks.map(b=>b.sourceCells[i]))));
