@@ -16,3 +16,9 @@ jobs:
       - run: node --check electron/preload.cjs
       - run: npx playwright install --with-deps chromium
       - run: npm run test:ui
+      - name: Download Electron for native keyboard smoke test
+        run: node node_modules/electron/install.js
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: ""
+      - name: Electron native keyboard smoke test
+        run: xvfb-run -a node tests/electron-shortcuts.mjs
