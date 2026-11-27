@@ -8,16 +8,17 @@ import {demo} from '../src/demo.mjs';
 import {compareRevisions,assertActivation} from '../src/revision-review.mjs';
 import {describeDisplays,selectOutputDisplay,coversDisplay,testView} from '../src/display-policy.mjs';
 import {validScale,readScale,advanceStyleSequence} from '../src/caption-scale.mjs';
+import {validFont,readFont,DEFAULT_FONT} from '../src/caption-fonts.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
 let operator=null,audience=null,displayId=null,ready=false,ack=-1,deck=validatePackage(demo),state=initialPlayback(),versions=new Map([['demo',deck]]),active='demo';
 let ackTimer=null,startTimer=null,placementTimer=null,revision=0,changingDeck=false,outputError='',testing=false,started=false,ackDeadline=0;
 const mac=process.platform==='darwin';
-let captionScale=100,scaleChanging=false;
+let captionScale=100,captionFont=DEFAULT_FONT,scaleChanging=false;
 const scalePath=()=>path.join(app.getPath('userData'),'caption-scale.json');
-async function loadScale(){try{captionScale=readScale(JSON.parse(await readFile(scalePath(),'utf8')).scale)}catch{captionScale=100}}
+async function loadScale(){try{const saved=JSON.parse(await readFile(scalePath(),'utf8'));captionScale=readScale(saved.scale);captionFont=readFont(saved.font)}catch{captionScale=100;captionFont=DEFAULT_FONT}}
 const dataDir=()=>path.join(app.getPath('userData'),'shows');
-const snapshot=()=>({revision:++revision,deck,state,active,captionScale,versions:[...versions].map(([id,d])=>({id,title:d.title,revision:d.revision,count:d.frames.length})),output:{open:!!audience&&!audience.isDestroyed(),ready,displayId,ack,error:outputError,testing,testView:testing?output().view:null}});
-const output=()=>({sequence:state.sequence,captionScale,view:testing?testView(displays().find(d=>d.id===displayId)??{label:'Display',width:0,height:0}):viewFor(deck,state)});
+const snapshot=()=>({revision:++revision,deck,state,active,captionScale,captionFont,versions:[...versions].map(([id,d])=>({id,title:d.title,revision:d.revision,count:d.frames.length})),output:{open:!!audience&&!audience.isDestroyed(),ready,displayId,ack,error:outputError,testing,testView:testing?output().view:null}});
+const output=()=>({sequence:state.sequence,captionScale,captionFont,view:testing?testView(displays().find(d=>d.id===displayId)??{label:'Display',width:0,height:0}):viewFor(deck,state)});
 const notify=()=>{if(operator&&!operator.isDestroyed())operator.webContents.send('deck:state-update',snapshot())};
 function validPlacement(w){
  const d=screen.getAllDisplays().find(d=>d.id===displayId);
@@ -82,8 +83,20 @@ function register(){
   scaleChanging=true;
   try{
    const temp=scalePath()+'.tmp';
-   await writeFile(temp,JSON.stringify({scale:value}),'utf8');await rename(temp,scalePath());
+   await writeFile(temp,JSON.stringify({scale:value,font:captionFont}),'utf8');await rename(temp,scalePath());
    captionScale=value;state=advanceStyleSequence(state);sendOutput();notify();return snapshot();
+  }finally{scaleChanging=false}
+ });
+ ipcMain.handle('deck:caption-font',async(e,value)=>{
+  requireOperator(e);
+  if(!validFont(value))throw new Error('지원하지 않는 자막 폰트');
+  if(scaleChanging||changingDeck||(audience&&!ready))throw new Error('진행 중인 작업 또는 관객 화면 응답을 확인하세요.');
+  if(value===captionFont)return snapshot();
+  scaleChanging=true;
+  try{
+   const temp=scalePath()+'.tmp';
+   await writeFile(temp,JSON.stringify({scale:captionScale,font:value}),'utf8');await rename(temp,scalePath());
+   captionFont=value;state=advanceStyleSequence(state);sendOutput();notify();return snapshot();
   }finally{scaleChanging=false}
  });
  ipcMain.handle('deck:test-output',(e,enabled)=>{requireOperator(e);if(!audience||!started||!ready)throw new Error('관객 화면 연결 확인 후 테스트하세요');testing=enabled===true;state=playback(state,{type:'BLACK'},deck.frames.length);sendOutput();notify();return snapshot()});

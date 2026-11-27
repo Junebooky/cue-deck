@@ -94,3 +94,6 @@
  .console .block.next:not(.live)::before{padding:1.5px}
 }
 @media(prefers-reduced-motion:reduce){.console .cue-group.live::before,.console .cue-group.next::before{animation:none}}
+
+/* Local font selector changes audience typography only, not script cards. */
+.caption-font-control{display:flex;align-items:center;gap:5px;font-size:11px;white-space:nowrap;color:#b8c2d1}.caption-font-control select{max-width:145px;background:#252830;color:#dce5f6;border:1px solid #393e48;border-radius:4px;padding:5px 6px;font-size:11px}.caption-font-control select:disabled{opacity:.5}.caption-font-control select:focus-visible{outline:2px solid #8ab3ff}

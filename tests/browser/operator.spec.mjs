@@ -100,3 +100,15 @@ test('C group highlights all source lines and advances once per audience cue',as
  await go(page).click();await go(page).click();const group=page.locator('.cue-group.next');await expect(group.locator('[data-cue-status=NEXT]')).toHaveCount(2);await expect(group.getByRole('button',{name:'큐 003 미리보기'})).toHaveCount(1);
  await go(page).click();const live=page.locator('.cue-group.live');await expect(live.locator('[data-cue-status=LIVE]')).toHaveCount(2);await expect(live).toContainText('우리의 길을 찾아가');await expect(page.locator('.live-label')).toContainText('003 / 9');await expect(page.locator('.program-frame .caption-cell')).toHaveCount(2);await expect(live.getByRole('button',{name:'큐 003 미리보기'})).toHaveCount(1);await go(page).click();await expect(page.locator('.live-label')).toContainText('004 / 9');await expect(page.locator('.cue-group.live')).toHaveCount(0);
 });
+
+test('bundled fonts load locally, switch both monitors without advancing cue, persist',async({page})=>{
+ const external=[];page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:4173/')&&!r.url().startsWith('data:'))external.push(r.url())});
+ await page.route('**/*',route=>route.request().url().startsWith('http://127.0.0.1:4173/')?route.continue():route.abort());
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();
+ const selector=page.getByRole('combobox',{name:'관객 자막 폰트'});for(const [id,family] of [['noto-sans','Noto Sans KR'],['ibm-plex','IBM Plex Sans KR'],['noto-serif','Noto Serif KR'],['pretendard','Pretendard Variable']]){
+  await selector.selectOption(id);await expect(page.locator('.program-frame')).toHaveAttribute('data-font',id);await expect(page.locator('.preview-frame')).toHaveAttribute('data-font',id);
+  await expect.poll(()=>page.evaluate(async family=>{const faces=await document.fonts.load('600 24px "'+family+'"','가나다 경성 ABC');return faces.length>0&&faces.every(f=>f.status==='loaded')},family)).toBe(true);
+  await expect(page.locator('.live-label')).toContainText('001 / 9');
+ }
+ await selector.selectOption('noto-serif');await expect(page.locator('.program-frame')).toHaveAttribute('data-font','noto-serif');await page.reload();await expect(selector).toHaveValue('noto-serif');expect(external).toEqual([]);
+});

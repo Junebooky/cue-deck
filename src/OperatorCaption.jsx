@@ -1,11 +1,12 @@
 import React,{useRef} from 'react';
 import {DEFAULT_SCALE} from './caption-scale.mjs';
 import {useCaptionFit} from './useCaptionFit.js';
-export default function OperatorCaption({view,variant='preview',scale=DEFAULT_SCALE,exact=false}){
+import {DEFAULT_FONT,captionFamily} from './caption-fonts.mjs';
+export default function OperatorCaption({view,variant='preview',scale=DEFAULT_SCALE,exact=false,font=DEFAULT_FONT}){
  const ref=useRef(null),content=useRef(null);
  const n=view.columns.length,rows=view.columns[0]?.lines.length||0;
- const fit=useCaptionFit(ref,content,view,scale,!exact);
- return <div className="operator-caption-wrap"><div ref={ref} className={'caption monitor-caption operator-caption '+variant+'-frame'} data-kind={view.kind} data-scale={scale}>
+ const fit=useCaptionFit(ref,content,view,scale,!exact,font);
+ return <div className="operator-caption-wrap"><div ref={ref} className={'caption monitor-caption operator-caption '+variant+'-frame'} data-kind={view.kind} data-scale={scale} data-font={font} style={{fontFamily:captionFamily(font)}}>
   <div ref={content} className="caption-grid" style={{gridTemplateColumns:'repeat('+Math.max(n,1)+', minmax(0,1fr))'}}>
    {n>1&&view.columns.map((c,i)=><div key={'h'+i} className="caption-actor">{c.actor}</div>)}
    {Array.from({length:rows},(_,r)=>view.columns.map((c,i)=><div className="caption-cell" key={r+':'+i}>{c.lines[r]||'\u00a0'}</div>))}

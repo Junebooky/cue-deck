@@ -1,6 +1,6 @@
 import {useLayoutEffect,useState} from 'react';
 import {captionTarget,fitCaption,readScale,MIN_SCALE} from './caption-scale.mjs';
-export function useCaptionFit(rootRef,bodyRef,view,scale,monitor=false){
+export function useCaptionFit(rootRef,bodyRef,view,scale,monitor=false,font){
  const [result,setResult]=useState({reduced:false,tooSmall:false,overflow:false});
  useLayoutEffect(()=>{
   const root=rootRef.current,body=bodyRef.current;
@@ -22,6 +22,6 @@ export function useCaptionFit(rootRef,bodyRef,view,scale,monitor=false){
   };
   const ro=new ResizeObserver(fit);ro.observe(root);fit();document.fonts?.ready.then(fit).catch(()=>{});
   return()=>{disposed=true;ro.disconnect()};
- },[rootRef,bodyRef,view,scale,monitor]);
+ },[rootRef,bodyRef,view,scale,monitor,font]);
  return result;
 }
