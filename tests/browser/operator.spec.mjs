@@ -278,6 +278,12 @@ test('single-active duet expands to the ordinary lyric layout in program and pre
  await expect(preview).toHaveAttribute('data-ratios','100');
  await expect(preview.locator('.caption-cell')).toHaveCount(2);
  await expect(preview.locator('.caption-actor')).toHaveCount(0);
+ await page.getByRole('button',{name:'가창 1명 · 전체 너비 검수'}).click();
+ const review=page.getByRole('dialog');
+ await expect(review).toContainText('일반 자막 자동 적용');
+ await expect(review.locator('.caption-grid .caption-cell')).toHaveCount(2);
+ await expect(review.locator('.caption-boundary')).toHaveCount(0);
+ await review.getByRole('button',{name:'닫기',exact:true}).click();
  await go(page).click();
  await page.getByRole('button',{name:'큐 004 직접 송출'}).click();
  await expect(program).toHaveAttribute('data-kind','solo');
@@ -286,7 +292,7 @@ test('single-active duet expands to the ordinary lyric layout in program and pre
  await expect(program.locator('.caption-actor')).toHaveCount(0);
 });
 
-test('audience renders a single-active overlap at the same size as a solo',async({page})=>{
+test('audience expands a single-active overlap and restores the split for a real duet',async({page})=>{
  await page.addInitScript(()=>{
   const view={kind:'overlap',columns:[{actor:'A',lines:['','']},{actor:'B',lines:['새로운 하루를 열어','우리의 길을 찾아가']}]};
   window.deckAPI={onOutput(fn){window.emitFrame=fn;return()=>{}},outputState:async()=>({sequence:1,view,captionScale:100}),ack:()=>{}};
