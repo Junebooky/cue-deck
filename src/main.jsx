@@ -1,0 +1,54 @@
+import React,{useEffect,useLayoutEffect,useRef,useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import {demo} from './demo.mjs';
+import {initialPlayback,playback,viewFor} from './model.mjs';
+import './styles.css';
+const api=window.deckAPI;
+const black={kind:'black',columns:[]};
+function Caption({view,large=false}){
+ const ref=useRef(null),content=useRef(null);
+ useLayoutEffect(()=>{const root=ref.current,body=content.current;if(!root||!body)return;const fit=()=>{const n=view.columns.length||1;let px=Math.min(root.clientWidth*(n>1?.035:.046),root.clientHeight*.12);body.style.setProperty('--caption-size',px+'px');while(px>5&&(body.scrollHeight>root.clientHeight*.86||body.scrollWidth>root.clientWidth*.92||[...body.querySelectorAll('.caption-cell')].some(x=>x.scrollWidth>x.clientWidth+1))){px-=.5;body.style.setProperty('--caption-size',px+'px')}};const ro=new ResizeObserver(fit);ro.observe(root);fit();return()=>ro.disconnect()},[view]);
+ const n=view.columns.length,rows=view.columns[0]?.lines.length||0;
+ return <div ref={ref} className={'caption '+(large?'audience-caption':'monitor-caption')}><div ref={content} className="caption-grid" style={{gridTemplateColumns:'repeat('+Math.max(n,1)+', minmax(0,1fr))'}}>
+ {n>1&&view.columns.map((c,i)=><div key={'h'+i} className="caption-actor">{c.actor}</div>)}
+ {Array.from({length:rows},(_,r)=>view.columns.map((c,i)=><div className="caption-cell" key={r+':'+i}>{c.lines[r]||'\u00a0'}</div>))}
+ </div></div>
+}
+function Audience(){const [frame,setFrame]=useState({sequence:-1,view:black});useEffect(()=>{if(!api)return;let alive=true;const receive=f=>{if(alive)setFrame(old=>f.sequence>=old.sequence?f:old)};const off=api.onOutput(receive);api.outputState().then(receive).catch(()=>{});return()=>{alive=false;off()}},[]);useEffect(()=>{if(frame.sequence<0)return;let a,b;a=requestAnimationFrame(()=>{b=requestAnimationFrame(()=>api?.ack(frame.sequence))});return()=>{cancelAnimationFrame(a);cancelAnimationFrame(b)}},[frame]);return <main className="audience"><Caption view={frame.view} large/></main>}
+const demoSnapshot={deck:demo,state:initialPlayback(),active:'demo',versions:[{id:'demo',title:demo.title,revision:demo.revision,count:demo.frames.length}],output:{open:false,ready:false,displayId:null,ack:-1}};
+function Operator(){
+ const [snap,setSnap]=useState(demoSnapshot),[selected,setSelected]=useState(null),[query,setQuery]=useState(''),[sceneOpen,setSceneOpen]=useState(true),[size,setSize]=useState(17),[error,setError]=useState(''),[dialog,setDialog]=useState(null),[screens,setScreens]=useState([]),[display,setDisplay]=useState(''),[busy,setBusy]=useState(false);
+ const inFlight=useRef(false),reader=useRef(null),latest=useRef(snap);
+ const {deck,state,output}=snap; const frames=deck.frames;const next=selected??(state.index+1<frames.length?state.index+1:null);
+ const scene=deck.scenes.find(s=>s.id===deck.blocks.find(b=>b.id===frames[state.index]?.blockId)?.sceneId);
+ const [browseScene,setBrowseScene]=useState(null);
+ useEffect(()=>{if(!api)return;let alive=true;const receive=s=>{if(alive){latest.current=s;setSnap(s)}};const off=api.onState(receive);api.state().then(receive).catch(e=>setError(e.message));return()=>{alive=false;off()}},[]);
+ const apply=s=>{latest.current=s;setSnap(s)};
+ const run=async(fn)=>{if(inFlight.current)return null;inFlight.current=true;setBusy(true);setError('');try{const result=await fn();if(result?.deck)apply(result);return result}catch(e){setError(e.message);return null}finally{inFlight.current=false;setBusy(false)}};
+ const jump=(id)=>{document.getElementById('block-'+id)?.scrollIntoView({block:'center',behavior:'instant'})};
+ const command=async(type,index)=>{if(inFlight.current)return;const result=await run(async()=>{if(api)return api.command({type,index});const s=latest.current;return {...s,state:playback(s.state,{type,index},s.deck.frames.length)}});if(result&&['GO','PREV'].includes(type)){setSelected(null);jump(result.deck.frames[result.state.index]?.blockId)}};
+ const go=()=>{if(next!==null)command('GO',next)};
+ const disabled=busy||(output.open&&!output.ready);
+ useEffect(()=>{const fn=e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||dialog||/INPUT|TEXTAREA|SELECT|BUTTON/.test(e.target?.tagName)||e.target?.isContentEditable)return;if(e.code==='Space'||e.key==='ArrowRight'){e.preventDefault();if(!disabled)go()}else if(e.key==='ArrowLeft'){e.preventDefault();if(!disabled)command('PREV')}else if(e.key.toLowerCase()==='b'){e.preventDefault();command(state.blackout&&state.index>=0?'RESTORE':'BLACK')}};window.addEventListener('keydown',fn);return()=>window.removeEventListener('keydown',fn)},[next,disabled,dialog,state.blackout,state.index]);
+ const openSetup=async()=>{if(!api){setError('외부 디스플레이 송출은 Electron 앱에서 실행하세요.');return}try{const ds=await api.displays();setScreens(ds);setDisplay(String(ds.find(d=>!d.primary)?.id??''));setDialog('output')}catch(e){setError(e.message)}};
+ const filtered=deck.blocks.filter(b=>!query||[b.text,b.actor,b.kind].some(x=>x.toLowerCase().includes(query.toLowerCase())));
+ const frameByBlock=new Map();frames.forEach((f,i)=>frameByBlock.set(f.blockId,[...(frameByBlock.get(f.blockId)||[]),i]));
+ const num=i=>i==null||i<0?'—':String(i+1).padStart(3,'0');
+ const preview=next===null?black:frames[next];
+ return <main className="console">
+ <header className="top"><div className="brand">◈ <b>cue.deck</b><span className="muted"> / {deck.title}</span></div><div className="toolbar"><span className="pill">{deck.revision}</span><button onClick={()=>setDialog('scripts')} disabled={output.open||busy}>대본 관리</button><button className={output.open?'':'primary'} onClick={()=>output.open?run(()=>api.stop()):openSetup()} disabled={busy}>{output.open?'공연 종료':'▶ 공연 시작'}</button></div></header>
+ <div className="status"><button onClick={()=>setSceneOpen(!sceneOpen)}>☰ SCENES</button><span>{scene?'ACT '+scene.act+' / '+scene.label:'공연 대기'}</span><span className="muted">MANUAL · {api?'LOCAL':'UI PREVIEW'}</span><span className="grow"/><span className={output.ready?'connected':'muted'}>{output.ready?'● OUTPUT CONNECTED':output.open?'● OUTPUT WAITING':'○ OUTPUT OFFLINE'}</span></div>
+ <div className="workspace" style={{gridTemplateColumns:sceneOpen?'minmax(150px, 16%) minmax(300px, 1fr) minmax(260px, 31%)':'minmax(300px, 1fr) minmax(260px, 31%)'}}>
+ {sceneOpen&&<aside className="scenes panel"><div className="panel-title">SCENE EXPLORER</div>{[1,2].map(act=><section key={act}><h3>ACT {String(act).padStart(2,'0')}</h3>{deck.scenes.filter(s=>s.act===act).map(s=><button key={s.id} className={'scene '+((browseScene||scene?.id)===s.id?'active':'')} onClick={()=>{setBrowseScene(s.id);setQuery('');setTimeout(()=>jump(deck.blocks.find(b=>b.sceneId===s.id)?.id),0)}}><span>{s.label}</span><small>{s.number||'드라마 / NAR'}</small></button>)}</section>)}</aside>}
+ <section className="script panel"><div className="panel-title">SCRIPT <div className="toolbar"><button onClick={()=>setSize(x=>Math.max(13,x-1))}>A−</button><button onClick={()=>setSize(x=>Math.min(26,x+1))}>A+</button></div></div><div className="search"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="대사 · 가사 검색"/><button onClick={()=>{setQuery('');setTimeout(()=>jump(frames[next]?.blockId),0)}}>다음 위치</button></div><div ref={reader} className="script-scroll" style={{fontSize:size}}>
+ {filtered.map(b=>{const indices=frameByBlock.get(b.id)||[];return <article id={'block-'+b.id} key={b.id} className={'block '+(indices.includes(next)?'next ':indices.includes(state.index)?'live ':'')+b.kind}><div className="block-meta"><span>{b.actor||b.kind}</span>{indices.map(i=><button key={i} className={'cue-tag '+(i===next?'armed':'')} onClick={()=>setSelected(i)}>{num(i)} {i===state.index?'LIVE':i===next?'NEXT':frames[i].kind==='black'?'BLACK':'CUE'}</button>)}</div><div className="block-text">{b.text}</div></article>})}
+ </div></section>
+ <aside className="monitors panel"><div className="monitor-label live-label">● PROGRAM <span>{num(state.index)} / {frames.length}</span></div><Caption view={viewFor(deck,state)}/><div className="monitor-label preview-label">● PREVIEW <span>{num(next)}</span></div><Caption view={preview}/><div className="trigger"><div className="muted text-xs">GO TRIGGER</div><b>{next===null?'마지막 큐 완료':frames[next].trigger}</b>{selected!==null&&<button onClick={()=>setSelected(null)}>선택 취소</button>}</div><div className="muted text-xs tracking-widest">UP NEXT</div>{frames.slice((next??frames.length)+1,(next??frames.length)+4).map(f=><div className="upnext" key={f.id}><small>{num(frames.indexOf(f))}</small>{f.trigger}</div>)}</aside>
+ </div>
+ {error&&<div role="alert" className="error">{error}<button onClick={()=>setError('')}>닫기</button></div>}
+ <footer className="transport"><button disabled={disabled||state.index<=0} onClick={()=>command('PREV')}>← PREV</button><button className="primary go" disabled={disabled||next===null} onClick={go}>GO <small>SPACE</small> →</button><button onClick={()=>command(state.blackout&&state.index>=0?'RESTORE':'BLACK')} disabled={busy}>■ {state.blackout&&state.index>=0?'RESTORE':'BLACK'}</button></footer>
+ <div className="foot"><span>LOCAL PERFORMANCE CONSOLE · {deck.productionId==='demo'?'테스트 대본':'공연 대본'}</span><span>{Math.max(0,state.index+1)} / {frames.length}</span></div>
+ {dialog&&<div className="overlay" role="dialog" aria-modal="true"><div className="modal"><div className="panel-title">{dialog==='output'?'공연 송출 설정':'SCRIPT MANAGER'}<button onClick={()=>setDialog(null)}>닫기</button></div>{dialog==='output'?<><p>확장 디스플레이를 선택하세요. 첫 송출 전 검정 화면으로 시작합니다.</p>{screens.map(s=><label className="display-option" key={s.id}><input type="radio" name="display" checked={display===String(s.id)} onChange={()=>setDisplay(String(s.id))}/>{s.label} · {s.width} × {s.height}{s.primary?' · 주 디스플레이':''}</label>)}<button className="primary" disabled={busy||!display||screens.length<2} onClick={async()=>{const r=await run(()=>api.start(Number(display)));if(r)setDialog(null)}}>공연 시작 · 검정 대기</button></>:<><p>실제 대본은 로컬에서만 보관됩니다. 불러온 후 원하는 버전을 활성화하세요.</p>{snap.versions.map(v=><div className="version" key={v.id}><div><b>{v.title}</b><div className="muted">{v.revision} · {v.count} cues</div></div><button disabled={!api||busy||v.id===snap.active} onClick={async()=>{const r=await run(()=>api.activate(v.id));if(r){setSelected(null);setQuery('');setBrowseScene(null)}}}>{v.id===snap.active?'사용 중':'활성화'}</button></div>)}<button className="primary" disabled={!api||busy} onClick={()=>run(()=>api.importDeck())}>공연 데이터 JSON 불러오기</button></>}</div></div>}
+ </main>
+}
+createRoot(document.getElementById('root')).render(new URLSearchParams(location.search).get('mode')==='audience'?<Audience/>:<Operator/>);
