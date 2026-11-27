@@ -1,9 +1,11 @@
-import React,{useRef} from 'react';
+import React,{useRef,useMemo} from 'react';
+import {presentCaption} from './caption-presentation.mjs';
 import {DEFAULT_SCALE} from './caption-scale.mjs';
 import {useCaptionFit} from './useCaptionFit.js';
 import {DEFAULT_FONT,captionFamily} from './caption-fonts.mjs';
 import {moveBoundary} from './caption-widths.mjs';
-export default function OperatorCaption({view,variant='preview',scale=DEFAULT_SCALE,exact=false,font=DEFAULT_FONT,ratios=null,onRatios=null,typography}){
+export default function OperatorCaption({view:sourceView,variant='preview',scale=DEFAULT_SCALE,exact=false,font=DEFAULT_FONT,ratios=null,onRatios=null,typography}){
+ const view=useMemo(()=>presentCaption(sourceView),[sourceView]);
  const ref=useRef(null),content=useRef(null);
  const n=view.columns.length,rows=view.columns[0]?.lines.length||0;
  const fit=useCaptionFit(ref,content,view,scale,!exact&&view.kind==='place',font,ratios,typography);
