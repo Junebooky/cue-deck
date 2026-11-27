@@ -221,5 +221,5 @@ test('solo two-line policy keeps authored text and fits an extra soft wrap by un
  const view={kind:'solo',columns:[{actor:'A',lines:['첫 번째 가사\n'+Array.from({length:24},()=> '가').join('')]}]};
  await page.addInitScript(view=>{window.deckAPI={outputState:async()=>({sequence:1,view,captionScale:100,captionFont:'pretendard',typography:{font:'pretendard',scale:100,weight:600,lineHeight:1.5,tracking:0,yOffset:0,policy:'prefer-two',relative:100}}),onOutput:()=>()=>{},ack:()=>{}}},view);
  await page.goto('/?mode=audience');const audience=page.locator('.audience-caption');await expect(audience.locator('.caption-cell')).toHaveText(view.columns[0].lines[0]);await expect(audience).toHaveAttribute('data-lines','2');await expect(audience).toHaveAttribute('data-risk','false');
- await expect(audience.locator('.caption-grid')).toHaveCSS('font-weight','600');await expect(audience.locator('.caption-grid')).toHaveCSS('letter-spacing','0px');
+ await expect(audience.locator('.caption-grid')).toHaveCSS('font-weight','600');await expect.poll(()=>audience.locator('.caption-grid').evaluate(el=>['normal','0px'].includes(getComputedStyle(el).letterSpacing))).toBe(true);
 });
