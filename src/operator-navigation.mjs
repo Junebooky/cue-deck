@@ -23,9 +23,10 @@ export function buildNavigation(deck){
  return {blockById,byBlock,byScene};
 }
 const normalize=s=>String(s??'').normalize('NFKC').toLocaleLowerCase('ko').replace(/\s+/g,' ').trim();
-export function searchBlocks(blocks,query){
+export function searchBlocks(blocks,query,frames=[]){
  const q=normalize(query);if(!q)return [];
- return blocks.filter(b=>[b.text,b.actor,b.number,...(b.sourceCells||[])].some(s=>normalize(s).includes(q))).map(b=>b.id);
+ const edited=new Set(frames.filter(f=>f.operatorEdited&&[f.trigger,...f.columns.flatMap(c=>[c.actor,c.lines.join(' '),...c.lines])].some(s=>normalize(s).includes(q))).map(f=>f.blockId));
+ return blocks.filter(b=>edited.has(b.id)||[b.text,b.actor,b.number,...(b.sourceCells||[])].some(s=>normalize(s).includes(q))).map(b=>b.id);
 }
 export function cueTarget(index,selected,count){
  const sequential=index+1<count?index+1:null;
