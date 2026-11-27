@@ -372,9 +372,14 @@ test('quick E memo appends repeated reasons, protects typing and preserves curre
  await expect(page.locator('.note-item textarea').last()).toHaveValue('첫 오류\nbe\n두 번째 오류');
 });
 
-test('visual cue edits save repeatedly in one library slot, persist and search new captions',async({page})=>{
+test('visual cue edits save repeatedly in one imported library slot, persist and search new captions',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);d.productionId='working-copy-test';d.title='단일 작업본 검증';d.revision='original-upload';
  await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
- await page.getByRole('button',{name:'대본 관리'}).click();const count=await page.locator('.version').count();
+ await page.getByRole('button',{name:'대본 관리'}).click();
+ await page.getByLabel('공연 데이터 파일').setInputFiles({name:'working-copy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});
+ await page.locator('.version').filter({hasText:'단일 작업본 검증'}).getByRole('button',{name:'활성화'}).click();
+ await expect(page.locator('.brand')).toContainText('단일 작업본 검증');
+ const count=await page.locator('.version').count();
  await page.getByRole('button',{name:'닫기',exact:true}).click();
  const open=()=>page.locator('#block-b4').getByRole('button',{name:'큐 003 수정'}).click();
  await open();const editor=page.getByRole('dialog',{name:'자막 편집'});
@@ -390,6 +395,8 @@ test('visual cue edits save repeatedly in one library slot, persist and search n
  await page.getByRole('button',{name:'대본 관리'}).click();
  await expect(page.locator('.version')).toHaveCount(count);
  await expect(page.locator('.version').getByRole('button',{name:'사용 중'})).toHaveCount(1);
+ await expect(page.locator('.version').filter({hasText:'단일 작업본 검증'})).toHaveCount(1);
+ await expect(page.locator('.version').filter({hasText:'단일 작업본 검증'})).toContainText('original-upload');
  await page.getByRole('button',{name:'닫기',exact:true}).click();
  await expect(page.locator('#block-b4')).toContainText('새로운 하루를 열어');
  await page.reload();await expect(page.locator('.edited-cue-caption')).toContainText('최종 첫 가사');
