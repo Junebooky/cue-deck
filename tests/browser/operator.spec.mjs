@@ -124,3 +124,17 @@ test('legacy two-line audience frame groups both source cards; heading is a cent
  await go(page).click();const live=page.locator('.cue-group.live');await expect(live.locator('[data-cue-status=LIVE]')).toHaveCount(2);await expect(live).toContainText('우리의 길을 찾아가');await expect(page.locator('.live-label')).toContainText('004 / 10');await expect(live.getByRole('button',{name:'큐 004 미리보기'})).toHaveCount(1);
  await go(page).click();await expect(page.locator('.live-label')).toContainText('005 / 10');
 });
+
+test('arrow follows NAR and drama individually while audience remains black; Space keeps cue behavior',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('001 / 9');
+ await page.keyboard.press('ArrowRight');await expect(page.locator('#block-b2')).toHaveClass(/reading-hold/);await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);await expect(page.locator('.live-label')).toContainText('001 / 9');
+ await page.keyboard.press('b');await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);
+ await page.keyboard.press('ArrowRight');await expect(page.locator('#block-b3')).toHaveClass(/live/);await expect(page.locator('.live-label')).toContainText('002 / 9');await expect(page.locator('.reading-hold')).toHaveCount(0);
+ await page.keyboard.press('ArrowLeft');await expect(page.locator('#block-b2')).toHaveClass(/reading-hold/);await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);
+ await page.keyboard.press('Space');await expect(page.locator('.live-label')).toContainText('003 / 9');await expect(page.locator('.reading-hold')).toHaveCount(0);
+});
+test('unanchored drama between black cue and lyrics gets its own reading step',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);d.productionId='reader-fixture';d.title='드라마 따라가기 테스트';d.blocks.splice(3,0,{id:'extra-drama',sceneId:'s1',kind:'dialogue',actor:'A',text:'추가 드라마 대사'});
+ await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();await page.getByLabel('공연 데이터 파일').setInputFiles({name:'reader.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});await page.locator('.version').filter({hasText:'드라마 따라가기 테스트'}).getByRole('button',{name:'활성화'}).click();await expect(page.locator('.brand')).toContainText('드라마 따라가기 테스트');await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await go(page).click();await go(page).click();await page.keyboard.press('ArrowRight');await expect(page.locator('#block-extra-drama')).toHaveClass(/reading-hold/);await expect(page.locator('.live-label')).toContainText('002 / 9');await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('003 / 9');
+});

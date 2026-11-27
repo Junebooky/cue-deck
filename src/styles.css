@@ -107,3 +107,6 @@
 .console .script-divider .divider-cues .cue-tag{margin-left:0}
 .console .script-divider.search-hit{outline:1px solid #86764c;outline-offset:2px}
 .console .script-divider.active-hit{outline:2px solid #e1bc75;outline-offset:2px}
+
+/* Independent manual reader position during black audience holds. */
+.reader-status{display:flex;justify-content:space-between;gap:8px;padding:5px 2px;color:#a7b3c5;font-size:11px}.reader-next-hint{color:#e2c28e}.console .block.reading-hold{border:2px solid #d5ab72;border-radius:6px;background:#362e26;box-shadow:0 8px 18px #0007,0 0 12px #d5ab7229;transform:translateY(-3px);padding:15px 14px;margin:12px 0}.console .block.reading-hold .block-text{font-size:1.12em}.console .block.reading-next{outline:1px dashed #a98b5d;outline-offset:1px}.read-hold-label,.read-next-label{margin-left:auto;padding:3px 6px;border-radius:3px;font-size:10px;font-weight:750;white-space:nowrap}.read-hold-label{background:#76582e;color:#ffe4b6}.read-next-label{color:#e0c395;background:#302b23}.transport>button:not(.go){white-space:nowrap}
