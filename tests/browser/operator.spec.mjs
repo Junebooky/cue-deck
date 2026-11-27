@@ -152,3 +152,19 @@ test('E records active cue and READ without altering playback, ignores repeat an
  await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('e');await page.keyboard.press('e');await expect(page.locator('#block-b2 .error-mark')).toContainText('1회');
  await page.getByRole('button',{name:/REHEARSAL/}).click();await expect(page.locator('.note-item')).toHaveCount(2);await page.locator('.note-item').last().getByText('메모',{exact:true}).locator('textarea').fill('내레이션 확인');await page.locator('.note-item').last().getByRole('checkbox').check();await page.reload();await expect(page.getByRole('button',{name:'리허설 노트'})).toBeEnabled();await page.getByRole('button',{name:'리허설 노트'}).click();await expect(page.locator('.note-item')).toHaveCount(2);await expect(page.locator('.note-item').last().locator('textarea').last()).toHaveValue('내레이션 확인');await expect(page.locator('.note-item').last().getByRole('checkbox')).toBeChecked();
 });
+
+test('B/E physical keys work on focused buttons, Korean layout and Ctrl aliases; protected input and repeat',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
+ await go(page).click();const program=page.locator('.program-frame');
+ await expect(program.locator('.caption-cell')).toHaveCount(1);
+ await go(page).focus();await page.keyboard.press('b');await expect(program.locator('.caption-cell')).toHaveCount(0);
+ await page.keyboard.press('Control+b');await expect(program.locator('.caption-cell')).toHaveCount(1);
+ await page.evaluate(()=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyB',key:'ㅠ',bubbles:true,cancelable:true})));await expect(program.locator('.caption-cell')).toHaveCount(0);
+ await page.keyboard.press('Control+b');await expect(program.locator('.caption-cell')).toHaveCount(1);
+ await page.getByRole('button',{name:'리허설 노트'}).click();await page.getByRole('button',{name:'새 리허설 시작'}).click();
+ await go(page).focus();await page.evaluate(()=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyE',key:'ㄷ',bubbles:true,cancelable:true})));await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');
+ await page.keyboard.press('Control+e');await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');
+ await page.keyboard.down('b');await page.keyboard.down('b');await page.keyboard.up('b');await expect(program.locator('.caption-cell')).toHaveCount(0);
+ const search=page.getByRole('textbox',{name:'대사 · 가사 검색'});await search.focus();await page.keyboard.press('Control+b');await page.keyboard.press('Control+e');await page.keyboard.press('b');await page.keyboard.press('e');await expect(search).toHaveValue('be');await expect(program.locator('.caption-cell')).toHaveCount(0);await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');
+ await search.press('Escape');await page.keyboard.press('Control+b');await expect(program.locator('.caption-cell')).toHaveCount(1);await expect(page.locator('.live-label')).toContainText('001 / 9');
+});

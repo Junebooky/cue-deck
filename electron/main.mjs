@@ -9,6 +9,7 @@ import {compareRevisions,assertActivation} from '../src/revision-review.mjs';
 import {describeDisplays,selectOutputDisplay,coversDisplay,testView} from '../src/display-policy.mjs';
 import {validScale,readScale,advanceStyleSequence} from '../src/caption-scale.mjs';
 import {validFont,readFont,DEFAULT_FONT} from '../src/caption-fonts.mjs';
+import {isNativeCueShortcut} from '../src/shortcuts.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
 let operator=null,audience=null,displayId=null,ready=false,ack=-1,deck=validatePackage(demo),state=initialPlayback(),versions=new Map([['demo',deck]]),active='demo';
 let ackTimer=null,startTimer=null,placementTimer=null,revision=0,changingDeck=false,outputError='',testing=false,started=false,ackDeadline=0;
@@ -39,7 +40,7 @@ function sendOutput(){
 }
 function requireOperator(e){if(!operator||e.sender!==operator.webContents)throw new Error('운영자 권한 필요')}
 function requireAudience(e){if(!audience||e.sender!==audience.webContents)throw new Error('관객 창 권한 필요')}
-function win(options,mode){const w=new BrowserWindow({...options,backgroundColor:'#000000',webPreferences:{preload:path.join(here,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:mode!=='audience'}});w.webContents.setWindowOpenHandler(()=>({action:'deny'}));w.webContents.on('will-navigate',e=>e.preventDefault());return w}
+function win(options,mode){const w=new BrowserWindow({...options,backgroundColor:'#000000',webPreferences:{preload:path.join(here,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:mode!=='audience'}});w.webContents.setWindowOpenHandler(()=>({action:'deny'}));w.webContents.on('will-navigate',e=>e.preventDefault());if(mode==='operator'){w.webContents.on('before-input-event',(_event,input)=>{w.webContents.setIgnoreMenuShortcuts(isNativeCueShortcut(input))})}return w}
 function loadWindow(w,mode){return w.loadFile(path.join(here,'../dist/index.html'),{query:{mode}})}
 function displays(){return describeDisplays(screen.getAllDisplays(),operator&&!operator.isDestroyed()?screen.getDisplayMatching(operator.getBounds()).id:null,screen.getPrimaryDisplay().id)}
 function stopOutput(message=''){clearTimeout(ackTimer);clearTimeout(startTimer);clearInterval(placementTimer);ready=false;ack=-1;started=false;testing=false;outputError=message;displayId=null;state=playback(state,{type:'BLACK'},deck.frames.length);const old=audience;audience=null;if(old&&!old.isDestroyed()){old.hide();old.destroy()}notify()}
