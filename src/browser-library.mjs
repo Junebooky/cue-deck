@@ -1,5 +1,5 @@
 import {validatePackage,initialPlayback} from './model.mjs';
-import {editCueRevision} from './cue-editor.mjs';
+import {editCueRevision,readWorkingDeck,assertEditBase} from './cue-editor.mjs';
 import {demo} from './demo.mjs';
 import {readSettings} from './caption-style.mjs';
 import {compareRevisions,assertActivation} from './revision-review.mjs';
@@ -26,6 +26,7 @@ export async function readLibrary(){
  const saved=await get('versions');
  const versions=new Map([['demo',validatePackage(demo)]]);
  for(const item of Array.isArray(saved)?saved:[]){try{if(item.id!=='demo')versions.set(item.id,validatePackage(item.deck))}catch{}}
+ for(const [id,base] of versions){const working=await get('working:'+id);if(working!==undefined)versions.set(id,readWorkingDeck(base,working.current))}
  const selected=await get('active');
  return {versions,active:versions.has(selected)?selected:'demo'};
 }
@@ -48,20 +49,37 @@ export async function importBrowserDeck(file,previous){
  return withWidths(snapshot(lib,previous));
 }
 export async function editBrowserCue(expected,patch,previous){
- const lib=await readLibrary();
- if(lib.active!==expected||previous.active!==expected||previous.output.open)throw Error('현재 대본을 다시 확인하세요.');
- const base=lib.versions.get(expected),candidate=editCueRevision(base,patch);
- const raw=JSON.stringify(candidate,null,2);
- if(new TextEncoder().encode(raw).length>20*1024*1024)throw Error('20MB 초과');
- const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw));
- const id=Array.from(new Uint8Array(bytes),v=>v.toString(16).padStart(2,'0')).join('');
- if(!lib.versions.has(id)){
-  await saveBrowserStyle(id,readSettings(previous.captionSettings,previous.captionFont,previous.captionScale));
-  await saveBrowserWidths(id,previous.captionWidths??{});
-  lib.versions.set(id,candidate);
-  await put('versions',[...lib.versions].filter(([k])=>k!=='demo').map(([id,deck])=>({id,deck})));
- }
- return {snapshot:await withWidths(snapshot(lib,previous)),review:{baseId:expected,candidateId:id,...compareRevisions(base,candidate)}};
+ if(previous.active!==expected||previous.output.open)throw Error('현재 대본을 다시 확인하세요.');
+ // One read/write transaction checks the active slot and edit generation, then
+ // atomically replaces its working copy and bounded backup. Other tabs cannot
+ // overwrite a newer edit using an old editor form.
+ const db=await openDB();
+ let candidate;
+ try{await new Promise((resolve,reject)=>{
+  const tx=db.transaction('library','readwrite'),store=tx.objectStore('library');
+  const selected=store.get('active'),saved=store.get('versions'),working=store.get('working:'+expected);
+  let pending=3,error=null;
+  const finish=()=>{if(--pending)return;try{
+   const versions=new Map([['demo',validatePackage(demo)]]);
+   for(const item of Array.isArray(saved.result)?saved.result:[]){if(item.id!=='demo')versions.set(item.id,validatePackage(item.deck))}
+   const active=versions.has(selected.result)?selected.result:'demo';
+   if(active!==expected)throw Error('현재 대본이 변경되었습니다.');
+   const base=versions.get(active);
+   const current=working.result===undefined?base:readWorkingDeck(base,working.result.current);
+   assertEditBase(current,patch);
+   candidate=editCueRevision(current,patch);
+   if(new TextEncoder().encode(JSON.stringify(candidate)).length>20*1024*1024)throw Error('20MB 초과');
+   store.put({current:candidate,previous:current},'working:'+active);
+  }catch(e){error=e;tx.abort()}};
+  for(const request of [selected,saved,working])request.onsuccess=finish;
+  tx.oncomplete=resolve;
+  tx.onerror=()=>reject(error||tx.error||Error('편집 저장 실패'));
+  tx.onabort=()=>reject(error||tx.error||Error('편집 저장 취소'));
+ })}finally{db.close()}
+ const currentId=previous.deck.frames[previous.state.index]?.id;
+ const index=currentId?candidate.frames.findIndex(f=>f.id===currentId):-1;
+ return {...previous,revision:previous.revision+1,deck:candidate,
+  state:{...previous.state,index,blackout:previous.state.blackout||index<0,sequence:previous.state.sequence+1}};
 }
 export async function compareBrowserDeck(id){
  const lib=await readLibrary();if(!lib.versions.has(id))throw new Error('대본 버전을 찾을 수 없습니다');
