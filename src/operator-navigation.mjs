@@ -1,10 +1,10 @@
 // Navigation is read-only: no playback commands or audience state here.
 export const MIN_READER_FONT=9,MAX_READER_FONT=28;
-export const defaultPrefs={sceneOpen:true,sceneWidth:200,monitorWidth:390,fontSize:17,follow:true};
+export const defaultPrefs={sceneOpen:true,sceneWidth:200,monitorWidth:390,fontSize:17,follow:true,followAnchor:'top'};
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 export function cleanPrefs(p={}){
  const n=(x,d,min,max)=>typeof x==='number'&&Number.isFinite(x)?clamp(x,min,max):d;
- return {sceneOpen:p?.sceneOpen!==false,sceneWidth:n(p?.sceneWidth,200,150,340),monitorWidth:n(p?.monitorWidth,390,260,600),fontSize:n(p?.fontSize,17,MIN_READER_FONT,MAX_READER_FONT),follow:p?.follow!==false};
+ return {sceneOpen:p?.sceneOpen!==false,sceneWidth:n(p?.sceneWidth,200,150,340),monitorWidth:n(p?.monitorWidth,390,260,600),fontSize:n(p?.fontSize,17,MIN_READER_FONT,MAX_READER_FONT),follow:p?.follow!==false,followAnchor:['top','ten','center'].includes(p?.followAnchor)?p.followAnchor:'top'};
 }
 export function fitLayout(width,prefs){
  const p=cleanPrefs(prefs),available=Math.max(0,width),split=p.sceneOpen?20:10,centerMin=320;
@@ -37,8 +37,10 @@ export function pastUnit(unit,positions,currentId,protectedIds){
  const current=positions.get(currentId);
  return current!==undefined&&unit.blocks.length>0&&unit.blocks.every(b=>positions.has(b.id)&&positions.get(b.id)<current&&!protectedIds.has(b.id));
 }
-export function followScrollOffset(height,span){
- // Keep the immediate next card visible when both cards fit.
- return Math.max(0,Math.min(height*.10,height-span-12));
+export function followScrollOffset(height,span,anchor='top'){
+ // Reserve only a small top inset for the LIVE border. Clamp other anchor
+ // choices so the next card stays visible whenever the two cards fit.
+ const preferred=anchor==='center'?height*.5:anchor==='ten'?height*.10:Math.min(12,Math.max(6,height*.02));
+ return Math.max(0,Math.min(preferred,height-span-12));
 }
 export function stepMatch(i,delta,count){return count?((i+delta)%count+count)%count:-1}

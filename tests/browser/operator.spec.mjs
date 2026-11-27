@@ -231,3 +231,33 @@ test('number search selects first lyric without sending until explicit confirmat
  await page.getByRole('button',{name:'넘버 검색',exact:true}).click();await dialog.getByRole('searchbox').fill('M02');await dialog.getByRole('searchbox').press('Enter');await dialog.getByRole('button',{name:'CUE 007 직접 송출'}).click();await expect(page.locator('.live-label')).toContainText('007 / 9');await expect(page.locator('.monitors .program-frame .caption-cell')).toHaveText(['바람이 부는 아침','다시 한 걸음']);
  await page.getByRole('button',{name:'넘버 검색',exact:true}).click();await dialog.getByRole('searchbox').fill('M01');await dialog.getByRole('searchbox').press('Enter');await dialog.getByRole('button',{name:'CUE 003 직접 송출'}).click();await expect(page.locator('.live-label')).toContainText('003 / 9');await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('004 / 9');
 });
+
+test('performance focus is automatic, gives script more room, preserves output and restores normal layout',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');await page.setViewportSize({width:1440,height:900});
+ await page.addInitScript(deck=>{
+  let s={revision:1,deck,state:{index:0,blackout:false,sequence:1},active:'demo',versions:[{id:'demo',title:deck.title,revision:deck.revision,count:deck.frames.length}],output:{open:false,ready:false}};
+  window.playbackCalls=0;
+  window.deckAPI={state:async()=>s,onState:()=>()=>{},displays:async()=>[{id:1,operator:false,label:'External',width:1920,height:1080,x:1920,y:0}],start:async()=>{s={...s,revision:s.revision+1,output:{open:true,ready:true}};return s},stop:async()=>{s={...s,revision:s.revision+1,output:{open:false,ready:false},state:{...s.state,blackout:true}};return s},command:async()=>{window.playbackCalls++;return s}};
+ },demo);
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
+ const reader=page.locator('.script-scroll');const before=await reader.evaluate(el=>({h:el.clientHeight,w:el.clientWidth}));
+ await page.getByRole('button',{name:'▶ 공연 시작'}).click();await page.getByRole('button',{name:'공연 시작 · 검정 대기'}).click();
+ await expect(page.locator('.console')).toHaveClass(/performance-focus/);await expect(page.locator('.top')).toBeHidden();await expect(page.locator('.scenes')).toHaveCount(0);await expect(page.locator('.script-title')).toBeHidden();await expect(page.locator('.focus-output')).toContainText('ON AIR');
+ await expect.poll(()=>reader.evaluate(el=>el.clientHeight)).toBeGreaterThan(before.h+50);await expect.poll(()=>reader.evaluate(el=>el.clientWidth)).toBeGreaterThan(before.w+100);
+ const program=page.locator('.program-frame .caption-cell');await expect(program).toHaveCount(1);const original=await program.allTextContents();
+ await page.getByRole('button',{name:'일반 모드',exact:true}).click();await expect(page.locator('.top')).toBeVisible();await expect(page.locator('.scenes')).toBeVisible();await page.getByRole('button',{name:'집중 모드',exact:true}).click();await expect(page.locator('.scenes')).toHaveCount(0);
+ await page.getByRole('button',{name:'장면 패널'}).click();await expect(page.locator('.scenes')).toBeVisible();await page.getByRole('button',{name:'장면 패널'}).click();await expect(page.locator('.scenes')).toHaveCount(0);
+ await page.keyboard.press('Control+f');await expect(page.getByRole('textbox',{name:'대사 · 가사 검색'})).toBeFocused();await page.keyboard.press('Escape');await expect(page.getByRole('textbox',{name:'대사 · 가사 검색'})).toBeHidden();
+ await page.getByRole('button',{name:'운영 설정',exact:true}).click();await page.getByRole('button',{name:'10%',exact:true}).click();await page.getByRole('button',{name:'완료',exact:true}).click();
+ await expect(program).toHaveText(original);expect(await page.evaluate(()=>window.playbackCalls)).toBe(0);
+ await page.keyboard.press('Escape');await page.getByRole('button',{name:'공연 종료 · Enter'}).click();await expect(page.locator('.top')).toBeVisible();await expect(page.locator('.scenes')).toBeVisible();await expect(page.locator('.console')).not.toHaveClass(/performance-focus/);
+ await page.getByRole('button',{name:'스크롤',exact:true}).click();await expect(page.getByRole('button',{name:'10%',exact:true})).toHaveAttribute('aria-pressed','true');
+});
+test('look ahead anchors current read or cue near top in ordinary rehearsal, including near the end',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
+ const reader=page.locator('.script-scroll');const nearTop=async selector=>{await expect.poll(async()=>{const top=await reader.evaluate(el=>el.getBoundingClientRect().top);const card=page.locator(selector);const y=await card.evaluate(el=>el.getBoundingClientRect().top);return Math.abs(y-top)}).toBeLessThan(24)};
+ await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('001 / 9');await page.keyboard.press('ArrowRight');await expect(page.locator('#block-b2')).toHaveClass(/reading-hold/);await nearTop('#block-b2');
+ await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('002 / 9');await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('003 / 9');await nearTop('#block-b4');
+ await page.getByRole('button',{name:'넘버 검색',exact:true}).click();const dialog=page.getByRole('dialog',{name:'넘버 검색'});await dialog.getByRole('searchbox').fill('M03');await dialog.getByRole('searchbox').press('Enter');await dialog.getByRole('button',{name:'CUE 009 직접 송출'}).click();await expect(page.locator('.live-label')).toContainText('009 / 9');await nearTop('.script-scroll .block.live');
+ await page.getByRole('button',{name:'스크롤',exact:true}).click();await page.getByRole('button',{name:'중앙',exact:true}).click();await page.getByRole('button',{name:'완료',exact:true}).click();await page.reload();await page.getByRole('button',{name:'스크롤',exact:true}).click();await expect(page.getByRole('button',{name:'중앙',exact:true})).toHaveAttribute('aria-pressed','true');
+});
