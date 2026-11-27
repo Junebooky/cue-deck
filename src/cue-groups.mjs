@@ -47,7 +47,7 @@ function matchesFrame(frame,blocks){
     const start=source.text.indexOf('(',match[1].length);
     for(const r of source.runs){const end=offset+r.text.length;if(r.red&&end>start)red+=r.text.slice(Math.max(0,start-offset));offset=end}
     if(canon(red)!==canon(source.text.slice(start)))return false;
-    const rhs=match[2].replace(new RegExp('^'+frame.columns[1].actor.replace(/[.*+?^${}()|[\]\\]/g,'\\if(blocks.some(b=>!Array.isArray(b.sourceCells)||b.sourceCells.length!==n))return false;')+'\\s*[:：]\\s*'),'');
+    const parts=match[2].split(/[:：]/);const rhs=parts.length>1&&canon(parts[0])===canon(frame.columns[1].actor)?parts.slice(1).join(':'):match[2];
     return canon(match[1])===canon(frame.columns[0].lines[i])&&canon(rhs)===canon(frame.columns[1].lines[i]);
    });
   }
