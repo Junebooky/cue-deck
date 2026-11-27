@@ -27,7 +27,12 @@ try{
  await page.getByRole('button',{name:'리허설 노트'}).click();
  await page.getByRole('button',{name:'새 리허설 시작'}).click();
  await page.locator('.transport .go').focus();await nativeKey('E');await markCount(1);
+ const memo=page.getByRole('textbox',{name:'오류 메모'});
+ await memo.waitFor({state:'visible'});assert.equal(await memo.evaluate(el=>el===document.activeElement),true);
+ await memo.fill('송출 오류 테스트');await memo.press('Enter');
+ await page.getByRole('dialog',{name:'오류 메모'}).waitFor({state:'hidden'});
  await nativeKey('E',['control']);await markCount(2);
+ await memo.press('Escape');await page.getByRole('dialog',{name:'오류 메모'}).waitFor({state:'hidden'});
  await page.getByRole('textbox',{name:'대사 · 가사 검색'}).focus();
  await nativeKey('B',['control']);await nativeKey('E',['control']);
  // Synchronize after the input events before asserting that no command ran.
