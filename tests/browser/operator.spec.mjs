@@ -215,3 +215,11 @@ test('solo review stores a local override and leaves current program unchanged u
  await page.getByRole('button',{name:'장문 · 큐 스타일 조절'}).click();await page.getByRole('slider',{name:'큐별 글자 크기'}).focus();await page.keyboard.press('Home');await page.getByRole('button',{name:'큐 스타일 저장'}).click();await expect(page.getByRole('button',{name:'큐 스타일 저장'})).toBeDisabled();await page.getByRole('button',{name:'닫기',exact:true}).click();await expect(page.locator('.live-label')).toContainText('002 / 9');await go(page).click();await expect(page.locator('.program-frame .caption-cell')).toHaveCount(2);
  await page.reload();await page.getByRole('button',{name:'장문 가사 검수',exact:true}).click();await expect(page.getByRole('slider',{name:'큐별 글자 크기'})).toHaveValue('85');await page.getByRole('button',{name:'전역값 복원'}).click();await page.getByRole('button',{name:'큐 스타일 저장'}).click();await expect(page.getByRole('slider',{name:'큐별 글자 크기'})).toHaveValue('100');
 });
+
+test('solo two-line policy keeps authored text and fits an extra soft wrap by uniform reduction',async({page})=>{
+ await page.setViewportSize({width:1280,height:720});
+ const view={kind:'solo',columns:[{actor:'A',lines:['첫 번째 가사\n'+Array.from({length:24},()=> '가').join('')]}]};
+ await page.addInitScript(view=>{window.deckAPI={outputState:async()=>({sequence:1,view,captionScale:100,captionFont:'pretendard',typography:{font:'pretendard',scale:100,weight:600,lineHeight:1.5,tracking:0,yOffset:0,policy:'prefer-two',relative:100}}),onOutput:()=>()=>{},ack:()=>{}}},view);
+ await page.goto('/?mode=audience');const audience=page.locator('.audience-caption');await expect(audience.locator('.caption-cell')).toHaveText(view.columns[0].lines[0]);await expect(audience).toHaveAttribute('data-lines','2');await expect(audience).toHaveAttribute('data-risk','false');
+ await expect(audience.locator('.caption-grid')).toHaveCSS('font-weight','600');await expect(audience.locator('.caption-grid')).toHaveCSS('letter-spacing','0px');
+});
