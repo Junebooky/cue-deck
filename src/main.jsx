@@ -230,8 +230,8 @@ function Operator(){
  const editedCaption=i=>frames[i]?.operatorEdited&&<div className="edited-cue-caption"><small>수정된 송출 자막</small>{frames[i].kind==='black'?<span>검정 화면</span>:frames[i].columns.map((c,j)=><div key={j}>{frames[i].columns.length>1&&<small>{c.actor}</small>}{c.lines.map((l,k)=><div key={k}>{l||'\u00a0'}</div>)}</div>)}</div>;
  const saveCueEdit=async patch=>{
   if(!editTarget||editTarget.active!==latest.current.active||latest.current.output.open)return;
-  const result=await run(async()=>{if(api)return api.editCue(editTarget.active,patch);const r=await editBrowserCue(editTarget.active,patch,latest.current);if(r.snapshot)apply(r.snapshot);return r.review});
-  if(result){setReview(result);setDialog('review')}
+  const result=await run(()=>api?api.editCue(editTarget.active,patch):editBrowserCue(editTarget.active,patch,latest.current));
+  if(result){setHoldCursor(null);setSelected(null);setQuery('');setDialog(null);setEditTarget(null);const edited=result.deck.frames.find(f=>f.id===patch.frameId);if(edited)queueJump(edited.blockId,true,true)}
  };
  const preview=next===null?black:frames[next];
  const programStyle=effectiveStyle(settings,output.testing?null:frames[state.index]),previewStyle=effectiveStyle(settings,preview);
