@@ -30,7 +30,9 @@ export async function readLibrary(){
 function snapshot(lib,previous,reset=false){
  return {...previous,revision:previous.revision+1,active:lib.active,deck:lib.versions.get(lib.active),state:reset?{...initialPlayback(),sequence:previous.state.sequence+1}:previous.state,versions:[...lib.versions].map(([id,d])=>({id,title:d.title,revision:d.revision,count:d.frames.length}))};
 }
-export async function loadBrowserLibrary(previous){return snapshot(await readLibrary(),previous,true)}
+export async function saveBrowserWidths(active,overrides){await put('caption-widths:'+active,overrides)}
+async function withWidths(s){return {...s,captionWidths:await get('caption-widths:'+s.active)??{}}}
+export async function loadBrowserLibrary(previous){return withWidths(snapshot(await readLibrary(),previous,true))}
 export async function importBrowserDeck(file,previous){
  if(!file)return previous;
  if(file.size>20*1024*1024)throw new Error('20MB 초과');
@@ -40,7 +42,7 @@ export async function importBrowserDeck(file,previous){
  const id=Array.from(new Uint8Array(bytes),v=>v.toString(16).padStart(2,'0')).join('');
  const lib=await readLibrary();lib.versions.set(id,deck);
  await put('versions',[...lib.versions].filter(([k])=>k!=='demo').map(([id,deck])=>({id,deck})));
- return snapshot(lib,previous);
+ return withWidths(snapshot(lib,previous));
 }
 export async function compareBrowserDeck(id){
  const lib=await readLibrary();if(!lib.versions.has(id))throw new Error('대본 버전을 찾을 수 없습니다');
@@ -48,5 +50,5 @@ export async function compareBrowserDeck(id){
 }
 export async function activateBrowserDeck(id,previous,options){
  const lib=await readLibrary();assertActivation(lib.active,lib.versions.get(lib.active),id,lib.versions.get(id),options);
- await put('active',id);lib.active=id;return snapshot(lib,previous,true);
+ await put('active',id);lib.active=id;return withWidths(snapshot(lib,previous,true));
 }
