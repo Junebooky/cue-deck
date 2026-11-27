@@ -14,16 +14,16 @@ function Caption({view,large=false}){
  {Array.from({length:rows},(_,r)=>view.columns.map((c,i)=><div className="caption-cell" key={r+':'+i}>{c.lines[r]||'\u00a0'}</div>))}
  </div></div>
 }
-function Audience(){const [frame,setFrame]=useState({sequence:-1,view:black});useEffect(()=>{if(!api)return;let alive=true;const receive=f=>{if(alive)setFrame(old=>f.sequence>=old.sequence?f:old)};const off=api.onOutput(receive);api.outputState().then(receive).catch(()=>{});return()=>{alive=false;off()}},[]);useEffect(()=>{if(frame.sequence<0)return;let a,b;a=requestAnimationFrame(()=>{b=requestAnimationFrame(()=>api?.ack(frame.sequence))});return()=>{cancelAnimationFrame(a);cancelAnimationFrame(b)}},[frame]);return <main className="audience"><Caption view={frame.view} large/></main>}
-const demoSnapshot={deck:demo,state:initialPlayback(),active:'demo',versions:[{id:'demo',title:demo.title,revision:demo.revision,count:demo.frames.length}],output:{open:false,ready:false,displayId:null,ack:-1}};
+function Audience(){const [frame,setFrame]=useState({sequence:-1,view:black});useEffect(()=>{if(!api)return;let alive=true;const receive=f=>{if(alive)setFrame(old=>f.sequence>=old.sequence?{...f}:old)};const off=api.onOutput(receive);api.outputState().then(receive).catch(()=>{});return()=>{alive=false;off()}},[]);useEffect(()=>{if(frame.sequence<0)return;let a,b;a=requestAnimationFrame(()=>{b=requestAnimationFrame(()=>api?.ack(frame.sequence))});return()=>{cancelAnimationFrame(a);cancelAnimationFrame(b)}},[frame]);return <main className="audience"><Caption view={frame.view} large/></main>}
+const demoSnapshot={revision:0,deck:demo,state:initialPlayback(),active:'demo',versions:[{id:'demo',title:demo.title,revision:demo.revision,count:demo.frames.length}],output:{open:false,ready:false,displayId:null,ack:-1}};
 function Operator(){
  const [snap,setSnap]=useState(demoSnapshot),[selected,setSelected]=useState(null),[query,setQuery]=useState(''),[sceneOpen,setSceneOpen]=useState(true),[size,setSize]=useState(17),[error,setError]=useState(''),[dialog,setDialog]=useState(null),[screens,setScreens]=useState([]),[display,setDisplay]=useState(''),[busy,setBusy]=useState(false);
  const inFlight=useRef(false),reader=useRef(null),latest=useRef(snap);
  const {deck,state,output}=snap; const frames=deck.frames;const next=selected??(state.index+1<frames.length?state.index+1:null);
  const scene=deck.scenes.find(s=>s.id===deck.blocks.find(b=>b.id===frames[state.index]?.blockId)?.sceneId);
  const [browseScene,setBrowseScene]=useState(null);
- useEffect(()=>{if(!api)return;let alive=true;const receive=s=>{if(alive){latest.current=s;setSnap(s)}};const off=api.onState(receive);api.state().then(receive).catch(e=>setError(e.message));return()=>{alive=false;off()}},[]);
- const apply=s=>{latest.current=s;setSnap(s)};
+ useEffect(()=>{if(!api)return;let alive=true;const receive=s=>{if(alive&&s.revision>=latest.current.revision){latest.current=s;setSnap(s)}};const off=api.onState(receive);api.state().then(receive).catch(e=>setError(e.message));return()=>{alive=false;off()}},[]);
+ const apply=s=>{if(s.revision>=latest.current.revision){latest.current=s;setSnap(s)}};
  const run=async(fn)=>{if(inFlight.current)return null;inFlight.current=true;setBusy(true);setError('');try{const result=await fn();if(result?.deck)apply(result);return result}catch(e){setError(e.message);return null}finally{inFlight.current=false;setBusy(false)}};
  const jump=(id)=>{document.getElementById('block-'+id)?.scrollIntoView({block:'center',behavior:'instant'})};
  const command=async(type,index)=>{if(inFlight.current)return;const result=await run(async()=>{if(api)return api.command({type,index});const s=latest.current;return {...s,state:playback(s.state,{type,index},s.deck.frames.length)}});if(result&&['GO','PREV'].includes(type)){setSelected(null);jump(result.deck.frames[result.state.index]?.blockId)}};
