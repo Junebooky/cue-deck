@@ -1,3 +1,4 @@
+import {validateCueGroups} from './cue-groups.mjs';
 // One validated package is the unit of revision. IDs are not display numbers.
 export function validatePackage(p) {
   const fail = (m) => {throw new Error(m)};
@@ -34,6 +35,7 @@ export function validatePackage(p) {
     if(f.kind==='place'&&p.blocks[i].kind!=='place')fail('장소 큐 원본 불일치');
     if(['solo','overlap'].includes(f.kind)&&p.blocks[i].kind!=='lyric')fail('가사 큐 원본 불일치');
   }
+  validateCueGroups(p);
   return structuredClone(p);
 }
 export const initialPlayback=()=>({index:-1,blackout:true,sequence:0});

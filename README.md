@@ -38,3 +38,6 @@ While the audience window is open, its placement is checked periodically. A misp
 
 ## Audience caption size
 The operator toolbar has 자막 크기 (90–120%, 5% increments, default 100%). Draft changes only update the local proportional sample; Apply changes the audience and both console monitors without advancing the cue or clearing BLACK. Electron persists the setting in userData; browser rehearsal has its own local setting. Shared fit logic measures the actual grid with rounding tolerance and fits uniform text within the 16:9 safe region; exceptionally dense frames can shrink below the requested minimum and are flagged for review in operator monitors. The preview retains its modest readability uplift; the settings sample uses the audience proportional target. Check actual screen readability before the show.
+
+## Cue group reader
+C layout preserves original cards inside one frame group, with one GO/preview selection per frame. Explicit sourceBlockIds define membership; old packages without it stay anchor-only and show a warning for non-demo productions. The private 1126 grouped package is distributed separately, not committed. Activate it via Script Manager to enable the reviewed ranges. PROGRAM groups have stronger red elevation and border beam; PREVIEW groups have a subtler blue treatment. The audience frame contents/order do not change.

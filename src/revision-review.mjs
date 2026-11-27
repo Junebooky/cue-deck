@@ -4,7 +4,7 @@ const same=(a,b)=>encode(a)===encode(b);
 const fields=(obj,names)=>Object.fromEntries(names.map(k=>[k,obj[k]??null]));
 const sceneFields=['act','label','number','numbers'];
 const blockFields=['sceneId','kind','actor','text','sourceCells','runs','cellRuns','number'];
-const cueFields=['blockId','kind','trigger','columns'];
+const cueFields=['blockId','sourceBlockIds','kind','trigger','columns'];
 function diffList(oldList,newList,category,keys,describe,extra=()=>[]){
  const oldMap=new Map(oldList.map((x,i)=>[x.id,{x,i}])),newMap=new Map(newList.map((x,i)=>[x.id,{x,i}]));
  const oldShared=oldList.filter(x=>newMap.has(x.id)).map(x=>x.id),newShared=newList.filter(x=>oldMap.has(x.id)).map(x=>x.id);

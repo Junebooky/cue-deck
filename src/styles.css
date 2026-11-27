@@ -69,3 +69,28 @@
 
 /* Caption scale only: operator controls never appear in the audience window. */
 .caption-scale-button{font-size:11px;white-space:nowrap;padding:5px 8px}.caption-scale-button b{color:#b6cef8;margin-left:4px;font-variant-numeric:tabular-nums}.operator-caption-wrap{min-width:0;flex-shrink:0;width:100%}.caption-fit-warning,.caption-fit-note{font-size:10px;padding:4px 2px 0;color:#e7be81}.caption-fit-note{color:#a1a9b5}.audience-caption .caption-cell,.audience-caption .caption-actor{overflow-wrap:anywhere;min-width:0}.caption-scale-dialog{display:grid;gap:12px}.scale-readout{display:flex;gap:12px;align-items:center;color:#c9d2e2;font-size:13px}.scale-readout strong{font-size:28px;color:#eaf0ff;font-variant-numeric:tabular-nums}.scale-readout button{margin-left:auto;font-size:12px}.scale-slider{display:flex;align-items:center;gap:12px}.scale-slider input{flex:1;min-width:0;accent-color:#6995e5}.scale-slider button{min-width:36px}.scale-ticks{display:flex;justify-content:space-between;color:#a5afc0;font-size:11px}.scale-sample{display:grid;gap:8px}.scale-live-note{color:#f1cc93!important}.scale-sample .operator-caption-wrap{max-width:440px;margin:auto}
+
+/* C: one bordered source group per verified audience frame, with independent original cards. */
+.console .cue-group{position:relative;isolation:isolate;margin:9px 0;padding:8px;border:1px solid #3c4857;border-radius:8px;background:#202630;box-shadow:0 2px 5px #0003}
+.console .cue-group-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:3px 5px 7px;font-size:11px;color:#aebaca}
+.console .cue-group-title{font-weight:750;letter-spacing:.045em}
+.console .cue-group-count{font-size:10px;color:#a9b4c4}
+.console .cue-group .group-member{margin:4px 0;padding:10px 12px;border:1px solid #384550;border-left:2px solid #557587;border-radius:5px;background:#1c262e;line-height:1.58}
+.console .cue-group .group-member:last-child{margin-bottom:0}
+.console .cue-group.live,.console .block.live{--beam-angle:0deg;--beam-base:#df858c;--beam-bright:#ffe1df;--beam-fade:#df858c30;--beam-time:4.6s;z-index:3;border:2px solid #df858c;background:#30282e;transform:translateY(-5px);box-shadow:0 12px 22px #0009,0 0 17px #d56e7455;padding:20px;margin:16px 0 19px}
+.console .cue-group.live .cue-group-title{color:#ffc1c4}
+.console .cue-group.live .group-member{padding:12px 14px;background:#3a3038;border-color:#67454f}
+.console .cue-group.live .group-member .block-text,.console .block.live>.block-text{font-size:1.15em}
+.console .cue-group.next,.console .block.next:not(.live){--beam-angle:0deg;--beam-base:#6d96e5;--beam-bright:#c1d7ff;--beam-fade:#6d96e525;--beam-time:6.8s;z-index:2;border:1px solid #6d96e5;background:#263650;transform:translateY(-2px);box-shadow:0 5px 10px #0007,0 0 9px #648de525;padding:14px;margin:12px 0}
+.console .cue-group.next .cue-group-title{color:#b8d0ff}
+.console .cue-group.next .group-member{background:#2a394f;border-color:#415d82}
+.console .cue-group.next .group-member .block-text,.console .block.next:not(.live)>.block-text{font-size:1.05em}
+.console .group-legacy{color:#e7be81}
+.console .script-scroll{padding:8px 12px 14px 9px}
+@supports (mask-composite:exclude){
+ .console .cue-group.live::before,.console .cue-group.next::before{content:"";position:absolute;inset:-2px;border-radius:inherit;padding:3px;pointer-events:none;z-index:1;background:conic-gradient(from var(--beam-angle),var(--beam-base) 0deg,var(--beam-fade) 90deg,var(--beam-base) 220deg,var(--beam-bright) 280deg,var(--beam-base) 360deg);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;animation:cue-border-beam var(--beam-time) linear infinite}
+ .console .cue-group.next:not(.live)::before{padding:1.5px;opacity:.75}
+ .console .block.live::before{padding:3px}
+ .console .block.next:not(.live)::before{padding:1.5px}
+}
+@media(prefers-reduced-motion:reduce){.console .cue-group.live::before,.console .cue-group.next::before{animation:none}}

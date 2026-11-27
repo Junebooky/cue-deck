@@ -12,3 +12,6 @@ Optional block fields: runs [{text,bold?,red?,italic?}], cellRuns (one array of 
 
 ## Revision comparison contract
 Keep stable IDs across edits only when identity is confirmed. Import does not overwrite older packages. Review compares scene metadata, operator text/formatting, and audience frame content/trigger/anchor changes independently, using ID equality. Reused or regenerated IDs can make the diff misleading; validate source mapping separately. Relative-order changes are computed among IDs common to both versions. Review confirmation is not rehearsal approval.
+
+## Reviewed source groups (C layout)
+Optional frame field `sourceBlockIds: string[]` contains every contiguous source block contributing to the display frame, in original order, starting at blockId. Use one ID for place/black, one or more lyric blocks for solo/overlap. A single table row may contain multiple displayed lines; a two-line slide may span two original rows. Do not infer membership from neighboring cards or repeated lyrics. The validator rejects overlapping groups, wrong anchors, cross-scene and non-lyric membership. Older packages remain importable with anchor-only emphasis; load a reviewed package to enable full groups. Group membership is included in revision comparison. The audience frame is unchanged by grouping.
