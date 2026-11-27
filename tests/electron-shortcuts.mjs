@@ -35,5 +35,21 @@ try{
  assert.equal(await page.locator('.program-frame .caption-cell').count(),1);
  assert.match(await page.locator('#block-b1 .error-mark').innerText(),/2회/);
  assert.match(await page.locator('.live-label').innerText(),/001 \/ 9/);
+ // A single-display performance uses the operator PROGRAM, not a covering audience window.
+ const count=await app.evaluate(({screen})=>screen.getAllDisplays().length);
+ if(count===1){
+  await page.getByRole('button',{name:'▶ 공연 시작'}).click();
+  await page.getByRole('button',{name:'공연 시작 · 검정 대기'}).click();
+  await page.getByLabel('공연 집중 모드').waitFor({state:'visible'});
+  await page.getByText('● 단일 화면 · PROGRAM',{exact:true}).waitFor({state:'visible'});
+  await captionCount(0);
+  assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().length),1);
+  await page.locator('.transport .go').click();await captionCount(1);
+  const live=await page.evaluate(()=>window.deckAPI.state());
+  assert.equal(live.output.open,true);assert.equal(live.output.localOnly,true);assert.equal(live.output.ack,-1);
+  await nativeKey('Escape');
+  await page.getByRole('button',{name:'공연 종료 · Enter'}).click();await captionCount(0);
+  assert.equal((await page.evaluate(()=>window.deckAPI.state())).output.open,false);
+ }
  console.log('Electron native input smoke test: B, Ctrl+B, E, Ctrl+E, editable guard passed');
 }finally{await app?.close();await rm(profile,{recursive:true,force:true})}
