@@ -57,3 +57,28 @@ test('same production update requires review and keeps old version until confirm
  const version=page.locator('.version').filter({hasText:'수정된 연습 대본'});await version.getByRole('button',{name:'활성화'}).click();await expect(page.getByRole('dialog')).toContainText('SCRIPT REVISION REVIEW');await expect(page.locator('.review-list')).toContainText('변경된 가사');await expect(page.getByRole('button',{name:'검토 후 활성화'})).toBeDisabled();await expect(page.locator('.brand')).not.toContainText('수정된 연습 대본');
  await page.getByRole('checkbox',{name:'변경 사항 및 원본 연결을 검토했습니다.'}).check();await page.getByRole('button',{name:'검토 후 활성화'}).click();await expect(page.locator('.brand')).toContainText('수정된 연습 대본');await expect(page.locator('.version').filter({hasText:'수정된 연습 대본'}).getByRole('button',{name:'사용 중'})).toBeDisabled();
 });
+
+test('operator captions are readable, independently colored, and source cards have live/next beams',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
+ await go(page).click();const program=page.locator('.program-frame'),preview=page.locator('.preview-frame');
+ await expect(program).toHaveCSS('border-top-color','rgb(219, 155, 155)');await expect(preview).toHaveCSS('border-top-color','rgb(170, 195, 246)');
+ await expect.poll(()=>program.locator('.caption-grid').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(22);
+ await expect(page.locator('.block.live')).toHaveCount(1);await expect(page.locator('.block.next')).toHaveCount(1);
+ const live=page.locator('.block.live'),next=page.locator('.block.next');
+ expect(await live.evaluate(e=>getComputedStyle(e,'::before').animationName)).toBe('cue-border-beam');
+ expect(await next.evaluate(e=>getComputedStyle(e,'::before').animationDuration)).toBe('6.8s');
+ expect(parseFloat(await live.evaluate(e=>getComputedStyle(e).paddingTop))).toBeGreaterThan(parseFloat(await next.evaluate(e=>getComputedStyle(e).paddingTop)));
+ await go(page).click();await expect(program.locator('.caption-cell')).toHaveCount(0);await go(page).click();await expect(program.locator('.caption-cell')).toHaveCount(2);
+ await expect(preview.locator('.caption-cell')).toHaveCount(4);
+ await expect.poll(()=>preview.locator('.caption-grid').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(16);
+ await page.emulateMedia({reducedMotion:'reduce'});expect(await page.locator('.block.live').evaluate(e=>getComputedStyle(e,'::before').animationName)).toBe('none');
+ await page.goto('/?mode=audience');await expect(page.locator('.audience-caption')).toBeVisible();await expect(page.locator('.operator-caption')).toHaveCount(0);
+});
+test('long operator lines fit after narrowing the monitor, all overlap rows share size',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);d.productionId='fit-fixture';d.title='긴 가사 검증';d.frames[3].columns[0].lines=['아주 긴 가사를 읽어야 하는 상황에서도 모든 문장이 화면 안에 정확히 들어와야 합니다 '.repeat(2),'한 줄 더'];d.frames[3].columns[1].lines=['동시에 노래하는 배우의 긴 가사도 같은 크기로 표시합니다 '.repeat(2),''];
+ await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();await page.getByLabel('공연 데이터 파일').setInputFiles({name:'fit.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});await page.locator('.version').filter({hasText:'긴 가사 검증'}).getByRole('button',{name:'활성화'}).click();await expect(page.locator('.brand')).toContainText('긴 가사 검증');await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await page.getByRole('button',{name:'큐 004 미리보기'}).click();await expect(page.locator('.preview-frame .caption-cell')).toHaveCount(4);
+ const splitter=page.getByRole('separator',{name:'송출 모니터 너비'});await splitter.focus();await page.keyboard.press('Home');
+ const fit=()=>page.locator('.preview-frame').evaluate(root=>{const body=root.querySelector('.caption-grid'),cells=[...body.querySelectorAll('.caption-cell')];return {fits:body.getBoundingClientRect().height<=root.clientHeight-18&&cells.every(c=>c.scrollWidth<=c.clientWidth+1),sizes:new Set(cells.map(c=>getComputedStyle(c).fontSize)).size}});
+ await expect.poll(fit).toEqual({fits:true,sizes:1});
+});

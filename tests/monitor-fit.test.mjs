@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {monitorFontBounds,fitMonitorFont} from '../src/monitor-fit.mjs';
+test('operator program has a larger readable ceiling than preview',()=>{const p=monitorFontBounds(336,189,1,'program'),v=monitorFontBounds(336,189,1,'preview');assert.ok(p.max>=30);assert.ok(v.max>=27);assert.ok(p.max>v.max);assert.ok(monitorFontBounds(336,189,2,'program').max<p.max)});
+test('font fitting selects the largest successful half-pixel step',()=>{assert.equal(fitMonitorFont({min:6,max:34},x=>x<=21.7),21.5);assert.equal(fitMonitorFont({min:6,max:34},()=>true),34);assert.equal(fitMonitorFont({min:6,max:34},()=>false),6)});
