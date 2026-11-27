@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {demo} from '../src/demo.mjs';
-import {editCueRevision,editableCueAnchors} from '../src/cue-editor.mjs';
+import {editCueRevision,editableCueAnchors,readWorkingDeck,assertEditBase,editCount} from '../src/cue-editor.mjs';
 import {searchBlocks} from '../src/operator-navigation.mjs';
 import {compareRevisions} from '../src/revision-review.mjs';
 const patch=(d,id,extra={})=>{const f=d.frames.find(f=>f.id===id);return {frameId:id,sourceBlockIds:editableCueAnchors(d,id).own,columns:structuredClone(f.columns),trigger:f.trigger,...extra}};
-test('text edit is a new revision, source and unrelated frames remain identical',()=>{
+test('text edit preserves revision, source and unrelated frames',()=>{
  const old=structuredClone(demo);
  const next=editCueRevision(old,patch(old,'c3',{columns:[{actor:'배우 A',lines:['수정된 가사','이어지는 말']}]}));
  assert.deepEqual(old,demo);assert.deepEqual(next.blocks,old.blocks);assert.deepEqual(next.scenes,old.scenes);
  assert.equal(next.frames[2].id,'c3');assert.equal(next.frames[2].operatorEdited,true);
- assert.equal(next.frames[2].columns[0].lines[0],'수정된 가사');assert.notEqual(next.revision,old.revision);
+ assert.equal(next.frames[2].columns[0].lines[0],'수정된 가사');assert.equal(next.revision,old.revision);assert.equal(editCount(next),1);
  assert.deepEqual(next.frames.filter(f=>f.id!=='c3'),old.frames.filter(f=>f.id!=='c3'));
  assert.deepEqual(searchBlocks(next.blocks,'수정된 가사',next.frames),['b4']);
  assert.equal(compareRevisions(old,next).counts.cue.changed,1);
@@ -40,4 +40,16 @@ test('black cue may be moved to a free source but never becomes a lyric',()=>{
 test('reject empty caption, oversized rows, blank actor in duet and no-op',()=>{
  for(const columns of [[{actor:'A',lines:['']}],[{actor:'A',lines:Array(7).fill('a')}],[{actor:'A',lines:['a']},{actor:'',lines:['b']}]])assert.throws(()=>editCueRevision(demo,patch(demo,'c3',{columns})));
  assert.throws(()=>editCueRevision(demo,patch(demo,'c3')),/변경된 내용/);
+});
+
+test('repeated edits preserve the import identity and reject stale forms',()=>{
+ const first=editCueRevision(demo,patch(demo,'c3',{columns:[{actor:'A',lines:['첫 수정']}]}));
+ const second=editCueRevision(first,patch(first,'c4',{columns:[{actor:'B',lines:['다음 수정']}]}));
+ assert.equal(second.revision,demo.revision);assert.equal(editCount(second),2);
+ assert.equal(second.frames[2].columns[0].lines[0],'첫 수정');
+ assert.deepEqual(readWorkingDeck(demo,second),second);
+ assert.throws(()=>assertEditBase(second,{expectedEditCount:1}),/이미 수정/);
+ assert.doesNotThrow(()=>assertEditBase(second,{expectedEditCount:2}));
+ const tampered=structuredClone(second);tampered.blocks[0].text='원본 변조';
+ assert.throws(()=>readWorkingDeck(demo,tampered),/원본과 일치/);
 });
