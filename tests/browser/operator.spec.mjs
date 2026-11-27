@@ -140,10 +140,11 @@ test('explicit arrow navigation scrolls to drama even with automatic FOLLOW disa
 test('E records active cue and READ without altering playback, ignores repeat and text input, persists notes',async({page})=>{
  await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();await page.keyboard.press('e');await expect(page.locator('.error-mark')).toHaveCount(0);
  await page.getByRole('button',{name:'리허설 노트'}).click();await page.getByRole('button',{name:'새 리허설 시작'}).click();await expect(page.getByRole('dialog')).toHaveCount(0);await page.keyboard.press('e');await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');await expect(page.locator('.live-label')).toContainText('001 / 9');
- await page.keyboard.down('e');await page.keyboard.down('e');await page.keyboard.up('e');await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');await page.keyboard.press('Control+z');await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');
- await page.keyboard.press('ArrowRight');await expect(page.locator('#block-b2')).toHaveClass(/reading-hold/);await page.keyboard.press('e');await expect(page.locator('#block-b2 .error-mark')).toContainText('1회');await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);
+ const memo=page.getByRole('textbox',{name:'오류 메모'});await expect(memo).toBeFocused();await memo.fill('장소 표시 지연');await memo.press('Enter');await expect(page.getByRole('dialog',{name:'오류 메모'})).toHaveCount(0);
+ await page.keyboard.down('e');await page.keyboard.down('e');await page.keyboard.up('e');await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');await memo.press('Escape');await page.keyboard.press('Control+z');await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');
+ await page.keyboard.press('ArrowRight');await expect(page.locator('#block-b2')).toHaveClass(/reading-hold/);await page.keyboard.press('e');await expect(page.locator('#block-b2 .error-mark')).toContainText('1회');await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);await expect(memo).toBeFocused();await memo.fill('내레이션 확인');await memo.press('Enter');
  await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('e');await page.keyboard.press('e');await expect(page.locator('#block-b2 .error-mark')).toContainText('1회');
- await page.getByRole('button',{name:/REHEARSAL/}).click();await expect(page.locator('.note-item')).toHaveCount(2);await page.locator('.note-item').last().getByText('메모',{exact:true}).locator('textarea').fill('내레이션 확인');await page.locator('.note-item').last().getByRole('checkbox').check();await page.reload();await expect(page.getByRole('button',{name:'리허설 노트'})).toBeEnabled();await page.getByRole('button',{name:'리허설 노트'}).click();await expect(page.locator('.note-item')).toHaveCount(2);await expect(page.locator('.note-item').last().locator('textarea').last()).toHaveValue('내레이션 확인');await expect(page.locator('.note-item').last().getByRole('checkbox')).toBeChecked();
+ await page.getByRole('button',{name:/REHEARSAL/}).click();await expect(page.locator('.note-item')).toHaveCount(2);await expect(page.locator('.note-item').first().locator('textarea').last()).toHaveValue('장소 표시 지연');await expect(page.locator('.note-item').last().locator('textarea').last()).toHaveValue('내레이션 확인');await page.locator('.note-item').last().getByRole('checkbox').check();await page.reload();await expect(page.getByRole('button',{name:'리허설 노트'})).toBeEnabled();await page.getByRole('button',{name:'리허설 노트'}).click();await expect(page.locator('.note-item')).toHaveCount(2);await expect(page.locator('.note-item').last().locator('textarea').last()).toHaveValue('내레이션 확인');await expect(page.locator('.note-item').last().getByRole('checkbox')).toBeChecked();
 });
 
 test('B/E physical keys work on focused buttons, Korean layout and Ctrl aliases; protected input and repeat',async({page})=>{
@@ -155,8 +156,8 @@ test('B/E physical keys work on focused buttons, Korean layout and Ctrl aliases;
  await page.evaluate(()=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyB',key:'ㅠ',bubbles:true,cancelable:true})));await expect(program.locator('.caption-cell')).toHaveCount(0);
  await page.keyboard.press('Control+b');await expect(program.locator('.caption-cell')).toHaveCount(1);
  await page.getByRole('button',{name:'리허설 노트'}).click();await page.getByRole('button',{name:'새 리허설 시작'}).click();
- await go(page).focus();await page.evaluate(()=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyE',key:'ㄷ',bubbles:true,cancelable:true})));await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');
- await page.keyboard.press('Control+e');await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');
+ await go(page).focus();await page.evaluate(()=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyE',key:'ㄷ',bubbles:true,cancelable:true})));await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');await page.getByRole('textbox',{name:'오류 메모'}).press('Escape');
+ await page.keyboard.press('Control+e');await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');await page.getByRole('textbox',{name:'오류 메모'}).press('Escape');
  await page.keyboard.down('b');await page.keyboard.down('b');await page.keyboard.up('b');await expect(program.locator('.caption-cell')).toHaveCount(0);
  const search=page.getByRole('textbox',{name:'대사 · 가사 검색'});await search.focus();await page.keyboard.press('Control+b');await page.keyboard.press('Control+e');await page.keyboard.press('b');await page.keyboard.press('e');await expect(search).toHaveValue('be');await expect(program.locator('.caption-cell')).toHaveCount(0);await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');
  await search.press('Escape');await page.keyboard.press('Control+b');await expect(program.locator('.caption-cell')).toHaveCount(1);await expect(page.locator('.live-label')).toContainText('001 / 9');
@@ -354,4 +355,19 @@ test('searching a reviewed second source block starts the whole grouped slide',a
  await expect(page.locator('.cue-group.live [data-cue-status=LIVE]')).toHaveCount(2);
  await go(page).click();
  await expect(page.locator('.live-label')).toContainText('004 / 9');
+});
+
+test('quick E memo appends repeated reasons, protects typing and preserves current slide',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();
+ await page.getByRole('button',{name:'리허설 노트'}).click();await page.getByRole('button',{name:'새 리허설 시작'}).click();
+ await page.keyboard.press('e');const memo=page.getByRole('textbox',{name:'오류 메모'});await expect(memo).toBeFocused();
+ await memo.fill('첫 오류');await memo.press('Shift+Enter');await memo.press('b');await memo.press('e');await memo.press('Space');await memo.press('Enter');
+ await expect(page.getByRole('dialog',{name:'오류 메모'})).toHaveCount(0);
+ await expect(page.locator('.live-label')).toContainText('001 / 9');
+ await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');
+ await page.keyboard.press('e');await expect(memo).toBeFocused();await memo.fill('두 번째 오류');await page.getByRole('button',{name:'저장 · Enter'}).click();
+ await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');
+ await page.getByRole('button',{name:/REHEARSAL/}).click();
+ await expect(page.locator('.note-item')).toHaveCount(1);
+ await expect(page.locator('.note-item textarea').last()).toHaveValue('첫 오류\nbe\n두 번째 오류');
 });
