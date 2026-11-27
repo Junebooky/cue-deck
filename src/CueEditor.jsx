@@ -1,9 +1,10 @@
 import React,{useMemo,useState} from 'react';
 import {editableCueAnchors} from './cue-editor.mjs';
 import OperatorCaption from './OperatorCaption.jsx';
+import {cueWidths} from './caption-widths.mjs';
 import {effectiveStyle} from './caption-style.mjs';
 
-export default function CueEditor({deck,frameId,settings,busy,error,onSave,onClose}){
+export default function CueEditor({deck,frameId,settings,widths,busy,error,onSave,onClose}){
  const frame=deck.frames.find(f=>f.id===frameId);
  const index=deck.frames.indexOf(frame);
  const {own,anchors,positions}=useMemo(()=>editableCueAnchors(deck,frameId),[deck,frameId]);
@@ -32,7 +33,7 @@ export default function CueEditor({deck,frameId,settings,busy,error,onSave,onClo
  };
  return <div className="cue-editor">
   <div className="note-meta"><b>CUE {String(index+1).padStart(3,'0')}</b><span>원본 대본은 유지 · 새 버전으로 저장</span></div>
-  <div className="cue-editor-preview"><div><small>현재 자막</small><OperatorCaption view={frame} exact typography={effectiveStyle(settings,frame)}/></div><div><small>수정 후 자막</small><OperatorCaption view={preview} exact typography={effectiveStyle(settings,preview)}/></div></div>
+  <div className="cue-editor-preview"><div><small>현재 자막</small><OperatorCaption view={frame} exact scale={settings.style.scale} font={settings.style.font} ratios={cueWidths(widths,frame)} typography={effectiveStyle(settings,frame)}/></div><div><small>수정 후 자막</small><OperatorCaption view={preview} exact scale={settings.style.scale} font={settings.style.font} ratios={cueWidths(widths,preview)} typography={effectiveStyle(settings,preview)}/></div></div>
   {frame.kind!=='black'&&<><div className="note-meta"><b>자막 내용 / 줄바꿈</b>{isLyric&&<button disabled={busy||columns.length>=3} onClick={()=>setColumns(old=>[...old,{actor:'',text:''}])}>+ 가창 열</button>}</div><div className="cue-editor-columns">{columns.map((c,i)=><div key={i}>
    <label>배우 {i+1}<input value={c.actor} disabled={busy} onChange={e=>edit(i,{actor:e.target.value})}/></label>
    <label>가사 {i+1}<textarea rows={4} disabled={busy} value={c.text} onChange={e=>edit(i,{text:e.target.value})}/></label>
