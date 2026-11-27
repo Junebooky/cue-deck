@@ -42,7 +42,7 @@ export function editCueRevision(deck,patch){
  }
  const unchanged=JSON.stringify({kind,columns,trigger,ids})===JSON.stringify({kind:original.kind,columns:original.columns,trigger:original.trigger,ids:own});
  if(unchanged)throw Error('변경된 내용이 없습니다.');
- const edited={...original,kind,columns,trigger,blockId:ids[0],sourceBlockIds:[...ids]};
+ const edited={...original,kind,columns,trigger,blockId:ids[0],sourceBlockIds:[...ids],operatorEdited:true};
  const next=structuredClone(deck);
  next.frames[index]=edited;
  next.frames.sort((a,b)=>positions.get(a.blockId)-positions.get(b.blockId));
