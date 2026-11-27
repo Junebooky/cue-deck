@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {validatePackage,initialPlayback,playback,viewFor} from '../src/model.mjs';
 import {demo} from '../src/demo.mjs';
+import {editCueRevision} from '../src/cue-editor.mjs';
 import {compareRevisions,assertActivation} from '../src/revision-review.mjs';
 import {describeDisplays,selectOutputDisplay,coversDisplay,testView} from '../src/display-policy.mjs';
 import {validScale,readScale,advanceStyleSequence} from '../src/caption-scale.mjs';
@@ -125,8 +126,25 @@ function register(){
   try{const next=updateWidths(captionWidths,frame,value);const temp=widthPath(active)+'.tmp';await writeFile(temp,JSON.stringify(next),'utf8');await rename(temp,widthPath(active));captionWidths=next;notify();return snapshot()}finally{widthChanging=false}
  });
  ipcMain.handle('deck:test-output',(e,enabled)=>{requireOperator(e);if(!audience||!started||!ready)throw new Error('관객 화면 연결 확인 후 테스트하세요');testing=enabled===true;state=playback(state,{type:'BLACK'},deck.frames.length);sendOutput();notify();return snapshot()});
- ipcMain.handle('deck:command',(e,action)=>{requireOperator(e);if(!action||!['GO','PREV','BLACK','RESTORE'].includes(action.type))throw new Error('지원하지 않는 명령');if((widthChanging||scaleChanging)&&action.type!=='BLACK')throw Error('열 너비 저장 중입니다.');if(testing&&action.type!=='BLACK')throw new Error('화면 테스트를 종료한 후 송출하세요');if(action.type!=='BLACK'&&audience&&!ready)throw new Error('관객 화면 준비 확인 대기');if(action.type==='BLACK')testing=false;state=playback(state,action,deck.frames.length);sendOutput();notify();return snapshot()});
+ ipcMain.handle('deck:command',(e,action)=>{requireOperator(e);if(!action||!['GO','PREV','BLACK','RESTORE'].includes(action.type))throw new Error('지원하지 않는 명령');if((changingDeck||widthChanging||scaleChanging)&&action.type!=='BLACK')throw Error('열 너비 저장 중입니다.');if(testing&&action.type!=='BLACK')throw new Error('화면 테스트를 종료한 후 송출하세요');if(action.type!=='BLACK'&&audience&&!ready)throw new Error('관객 화면 준비 확인 대기');if(action.type==='BLACK')testing=false;state=playback(state,action,deck.frames.length);sendOutput();notify();return snapshot()});
  ipcMain.handle('deck:import',async e=>{requireOperator(e);if(outputActive()||changingDeck)throw new Error('공연 종료 및 기존 작업 완료 후 대본을 불러오세요');changingDeck=true;try{const res=await dialog.showOpenDialog(operator,{properties:['openFile'],filters:[{name:'Cue Deck JSON',extensions:['json']}]});if(res.canceled)return snapshot();const file=res.filePaths[0];if((await stat(file)).size>20*1024*1024)throw new Error('20MB 초과');const raw=await readFile(file,'utf8');const parsed=validatePackage(JSON.parse(raw));if(outputActive())throw new Error('공연 중에는 대본 변경 불가');const id=createHash('sha256').update(raw).digest('hex');await writeFile(path.join(dataDir(),id+'.json'),raw,{flag:'wx'}).catch(err=>{if(err.code!=='EEXIST')throw err});versions.set(id,parsed);notify();return snapshot()}finally{changingDeck=false}});
+ ipcMain.handle('deck:edit-cue',async(e,expected,patch)=>{
+  requireOperator(e);if(outputActive()||changingDeck||scaleChanging||widthChanging||active!==expected)throw Error('공연 종료 후 현재 대본을 다시 확인하세요.');
+  if(styleLoadError||widthLoadError)throw Error('기존 자막 설정을 확인하세요.');
+  changingDeck=true;
+  try{
+   const candidate=editCueRevision(deck,patch),raw=JSON.stringify(candidate,null,2);
+   if(Buffer.byteLength(raw)>20*1024*1024)throw Error('20MB 초과');
+   const id=createHash('sha256').update(raw).digest('hex');
+   const writeOnce=async(file,value)=>{await writeFile(file,value,{encoding:'utf8',flag:'wx'}).catch(err=>{if(err.code!=='EEXIST')throw err})};
+   // Copy style settings to the new revision, not the old source or existing candidate.
+   await writeOnce(stylePath(id),JSON.stringify(settings()));
+   await writeOnce(widthPath(id),JSON.stringify(captionWidths));
+   await writeOnce(path.join(dataDir(),id+'.json'),raw);
+   versions.set(id,candidate);notify();
+   return {baseId:active,candidateId:id,...compareRevisions(deck,candidate)};
+  }finally{changingDeck=false}
+ });
  ipcMain.handle('deck:compare',(e,id)=>{requireOperator(e);if(outputActive()||changingDeck||!versions.has(id))throw new Error('공연 종료 후 비교하세요');return {baseId:active,candidateId:id,...compareRevisions(deck,versions.get(id))}});
  ipcMain.handle('deck:activate',async(e,id,options)=>{requireOperator(e);if(outputActive()||changingDeck||widthChanging||scaleChanging||!versions.has(id))throw new Error('대본 변경 불가');assertActivation(active,deck,id,versions.get(id),options);changingDeck=true;try{const nextWidths=await loadWidths(id),nextStyle=await loadStyle(id);await persistActive(id);if(outputActive())throw new Error('공연 중에는 대본 변경 불가');active=id;deck=versions.get(id);captionWidths=nextWidths;widthLoadError='';captionSettings=nextStyle;styleLoadError='';state=playback(state,{type:'RESET'},deck.frames.length);notify();return snapshot()}finally{changingDeck=false}});
 }
