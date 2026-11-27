@@ -261,3 +261,44 @@ test('look ahead anchors current read or cue near top in ordinary rehearsal, inc
  await page.getByRole('button',{name:'넘버 검색',exact:true}).click();const dialog=page.getByRole('dialog',{name:'넘버 검색'});await dialog.getByRole('searchbox').fill('M03');await dialog.getByRole('searchbox').press('Enter');await dialog.getByRole('button',{name:'CUE 009 직접 송출'}).click();await expect(page.locator('.live-label')).toContainText('009 / 9');await nearTop('.script-scroll .block.live');
  await page.getByRole('button',{name:'스크롤',exact:true}).click();await page.getByRole('button',{name:'중앙',exact:true}).click();await page.getByRole('button',{name:'완료',exact:true}).click();await page.reload();await page.getByRole('button',{name:'스크롤',exact:true}).click();await expect(page.getByRole('button',{name:'중앙',exact:true})).toHaveAttribute('aria-pressed','true');
 });
+
+test('single-active duet expands to the ordinary lyric layout in program and preview',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);
+ d.productionId='single-active-lyric-fixture';d.title='단일 가창 검증';
+ d.frames[3].columns[1].lines=['',''];
+ await page.goto('/');
+ await page.getByRole('button',{name:'대본 관리'}).click();
+ await page.getByLabel('공연 데이터 파일').setInputFiles({name:'single-active.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});
+ await page.locator('.version').filter({hasText:'단일 가창 검증'}).getByRole('button',{name:'활성화'}).click();
+ await expect(page.locator('.brand')).toContainText('단일 가창 검증');
+ await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await page.getByRole('button',{name:'큐 004 미리보기'}).click();
+ const preview=page.locator('.preview-frame'),program=page.locator('.program-frame');
+ await expect(preview).toHaveAttribute('data-kind','solo');
+ await expect(preview).toHaveAttribute('data-ratios','100');
+ await expect(preview.locator('.caption-cell')).toHaveCount(2);
+ await expect(preview.locator('.caption-actor')).toHaveCount(0);
+ await go(page).click();
+ await page.getByRole('button',{name:'큐 004 직접 송출'}).click();
+ await expect(program).toHaveAttribute('data-kind','solo');
+ await expect(program).toHaveAttribute('data-ratios','100');
+ await expect(program.locator('.caption-cell')).toHaveText(['저 멀리 빛나는 길','서로의 손을 잡고']);
+ await expect(program.locator('.caption-actor')).toHaveCount(0);
+});
+
+test('audience renders a single-active overlap at the same size as a solo',async({page})=>{
+ await page.addInitScript(()=>{
+  const view={kind:'overlap',columns:[{actor:'A',lines:['','']},{actor:'B',lines:['새로운 하루를 열어','우리의 길을 찾아가']}]};
+  window.deckAPI={onOutput(fn){window.emitFrame=fn;return()=>{}},outputState:async()=>({sequence:1,view,captionScale:100}),ack:()=>{}};
+ });
+ await page.goto('/?mode=audience');
+ const caption=page.locator('.audience-caption');
+ await expect(caption).toHaveAttribute('data-kind','solo');
+ await expect(caption).toHaveAttribute('data-ratios','100');
+ await expect(caption.locator('.caption-cell')).toHaveText(['새로운 하루를 열어','우리의 길을 찾아가']);
+ await expect(caption.locator('.caption-actor')).toHaveCount(0);
+ await page.evaluate(()=>window.emitFrame({sequence:2,view:{kind:'overlap',columns:[{actor:'A',lines:['첫 번째 가사','둘째 가사']},{actor:'B',lines:['함께','']}]},captionScale:100}));
+ await expect(caption).toHaveAttribute('data-kind','overlap');
+ await expect(caption.locator('.caption-cell')).toHaveCount(4);
+ await expect(caption.locator('.caption-actor')).toHaveCount(2);
+});
