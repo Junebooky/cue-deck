@@ -372,30 +372,29 @@ test('quick E memo appends repeated reasons, protects typing and preserves curre
  await expect(page.locator('.note-item textarea').last()).toHaveValue('첫 오류\nbe\n두 번째 오류');
 });
 
-test('visual cue editing previews, preserves source, reviews, persists and searches new caption',async({page})=>{
+test('visual cue edits save repeatedly in one library slot, persist and search new captions',async({page})=>{
  await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
- await page.locator('#block-b4').getByRole('button',{name:'큐 003 수정'}).click();
- const editor=page.getByRole('dialog',{name:'자막 편집'});
- await expect(editor).toBeVisible();
- await editor.getByLabel('가사 1',{exact:true}).fill('수정된 첫 가사\n새로운 둘째 가사');
+ await page.getByRole('button',{name:'대본 관리'}).click();const count=await page.locator('.version').count();
+ await page.getByRole('button',{name:'닫기',exact:true}).click();
+ const open=()=>page.locator('#block-b4').getByRole('button',{name:'큐 003 수정'}).click();
+ await open();const editor=page.getByRole('dialog',{name:'자막 편집'});
+ await editor.getByRole('textbox',{name:'가사 1',exact:true}).fill('수정된 첫 가사\n새로운 둘째 가사');
  await expect(editor.locator('.cue-editor-preview > div').last().locator('.caption-cell')).toHaveText(['수정된 첫 가사','새로운 둘째 가사']);
  await editor.getByRole('button',{name:'취소',exact:true}).click();
  await expect(editor).toHaveCount(0);
- await expect(page.locator('#block-b4')).not.toContainText('수정된 첫 가사');
- await page.locator('#block-b4').getByRole('button',{name:'큐 003 수정'}).click();
- await editor.getByLabel('가사 1',{exact:true}).fill('수정된 첫 가사\n새로운 둘째 가사');
- await editor.getByRole('button',{name:'저장 · 변경 검토'}).click();
- await expect(page.locator('.review-list')).toContainText('수정된 첫 가사');
- await expect(page.getByRole('button',{name:'검토 후 활성화'})).toBeDisabled();
- await page.getByRole('checkbox',{name:'변경 사항 및 원본 연결을 검토했습니다.'}).check();
- await page.getByRole('button',{name:'검토 후 활성화'}).click();
- await expect(page.getByRole('dialog')).toContainText('SCRIPT MANAGER');
- await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await open();await editor.getByRole('textbox',{name:'가사 1',exact:true}).fill('수정된 첫 가사\n새로운 둘째 가사');
+ await editor.getByRole('button',{name:'저장',exact:true}).click();await expect(editor).toHaveCount(0);
  await expect(page.locator('.edited-cue-caption')).toContainText('수정된 첫 가사');
+ await open();await editor.getByRole('textbox',{name:'가사 1',exact:true}).fill('최종 첫 가사\n새로운 둘째 가사');
+ await editor.getByRole('button',{name:'저장',exact:true}).click();await expect(editor).toHaveCount(0);
+ await page.getByRole('button',{name:'대본 관리'}).click();
+ await expect(page.locator('.version')).toHaveCount(count);
+ await expect(page.locator('.version').getByRole('button',{name:'사용 중'})).toHaveCount(1);
+ await page.getByRole('button',{name:'닫기',exact:true}).click();
  await expect(page.locator('#block-b4')).toContainText('새로운 하루를 열어');
- await page.reload();await expect(page.locator('.edited-cue-caption')).toContainText('수정된 첫 가사');
- await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('수정된 첫 가사');
+ await page.reload();await expect(page.locator('.edited-cue-caption')).toContainText('최종 첫 가사');
+ await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('최종 첫 가사');
  await page.getByRole('button',{name:'검색 위치 슬라이드 시작'}).click();
  await page.getByRole('button',{name:'확인 · 슬라이드 시작'}).click();
- await expect(page.locator('.program-frame .caption-cell')).toHaveText(['수정된 첫 가사','새로운 둘째 가사']);
+ await expect(page.locator('.program-frame .caption-cell')).toHaveText(['최종 첫 가사','새로운 둘째 가사']);
 });
