@@ -47,6 +47,14 @@ try{
   await page.locator('.transport .go').click();await captionCount(1);
   const live=await page.evaluate(()=>window.deckAPI.state());
   assert.equal(live.output.open,true);assert.equal(live.output.localOnly,true);assert.equal(live.output.ack,-1);
+  await page.getByRole('button',{name:'대본 검색',exact:true}).click();
+  await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('우리의 길을 찾아가');
+  await page.getByRole('button',{name:'검색 위치 슬라이드 시작'}).click();
+  await page.getByRole('button',{name:'확인 · 슬라이드 시작'}).click();
+  await captionCount(2);
+  assert.equal((await page.evaluate(()=>window.deckAPI.state())).state.index,2);
+  await page.locator('.transport .go').click();await captionCount(4);
+  assert.equal((await page.evaluate(()=>window.deckAPI.state())).state.index,3);
   await nativeKey('Escape');
   await page.getByRole('button',{name:'공연 종료 · Enter'}).click();await captionCount(0);
   assert.equal((await page.evaluate(()=>window.deckAPI.state())).output.open,false);
