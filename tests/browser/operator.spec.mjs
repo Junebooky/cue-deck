@@ -223,3 +223,11 @@ test('solo two-line policy keeps authored text and fits an extra soft wrap by un
  await page.goto('/?mode=audience');const audience=page.locator('.audience-caption');await expect(audience.locator('.caption-cell')).toHaveText(view.columns[0].lines[0]);await expect(audience).toHaveAttribute('data-lines','2');await expect(audience).toHaveAttribute('data-risk','false');
  await expect(audience.locator('.caption-grid')).toHaveCSS('font-weight','600');await expect.poll(()=>audience.locator('.caption-grid').evaluate(el=>['normal','0px'].includes(getComputedStyle(el).letterSpacing))).toBe(true);
 });
+
+test('number search selects first lyric without sending until explicit confirmation, can jump backward',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();
+ await page.getByRole('button',{name:'넘버 검색',exact:true}).click();const dialog=page.getByRole('dialog',{name:'넘버 검색'});await dialog.getByRole('searchbox').fill('M02');await dialog.getByRole('button',{name:/M02/}).click();await expect(page.locator('.live-label')).toContainText('001 / 9');
+ await dialog.getByRole('button',{name:'PREVIEW로 이동'}).click();await expect(page.locator('.preview-label')).toContainText('007');await expect(page.locator('.live-label')).toContainText('001 / 9');
+ await page.getByRole('button',{name:'넘버 검색',exact:true}).click();await dialog.getByRole('searchbox').fill('M02');await dialog.getByRole('searchbox').press('Enter');await dialog.getByRole('button',{name:'CUE 007 직접 송출'}).click();await expect(page.locator('.live-label')).toContainText('007 / 9');await expect(page.locator('.monitors .program-frame .caption-cell')).toHaveText(['바람이 부는 아침','다시 한 걸음']);
+ await page.getByRole('button',{name:'넘버 검색',exact:true}).click();await dialog.getByRole('searchbox').fill('M01');await dialog.getByRole('searchbox').press('Enter');await dialog.getByRole('button',{name:'CUE 003 직접 송출'}).click();await expect(page.locator('.live-label')).toContainText('003 / 9');await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('004 / 9');
+});
