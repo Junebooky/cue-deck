@@ -8,7 +8,7 @@ export function validatePackage(p) {
   const scenes=ids(p.scenes,'scene'), blocks=ids(p.blocks,'block'); ids(p.frames,'frame');
   const kinds=['lyric','dialogue','nar','direction','place','heading'];
   for(const s of p.scenes) if(![1,2].includes(s.act)||!str(s.label))fail('장면 정보 오류');
-  for(const b of p.blocks) if(!scenes.has(b.sceneId)||!kinds.includes(b.kind)||typeof b.text!=='string'||typeof b.actor!=='string')fail('대본 블록 오류: '+b.id);
+  for(const b of p.blocks) {if(!scenes.has(b.sceneId)||!kinds.includes(b.kind)||typeof b.text!=='string'||typeof b.actor!=='string')fail('대본 블록 오류: '+b.id);if(b.sourceCells!==undefined&&(!Array.isArray(b.sourceCells)||b.sourceCells.length<1||!b.sourceCells.every(c=>typeof c==='string')))fail('원본 표 셀 오류: '+b.id)}
   let last=-1;
   for(const f of p.frames){
     const i=p.blocks.findIndex(b=>b.id===f.blockId);
@@ -19,10 +19,11 @@ export function validatePackage(p) {
     if(f.kind==='black'?n!==0:f.kind==='overlap'?n<2||n>3:n!==1)fail('열 개수 오류: '+f.id);
     let rows;
     for(const c of f.columns){
-      if(typeof c.actor!=='string'||!Array.isArray(c.lines)||c.lines.length<1||c.lines.length>6||!c.lines.every(x=>typeof x==='string')||!c.lines.some(str))fail('가사 열 오류: '+f.id);
+      if(typeof c.actor!=='string'||!Array.isArray(c.lines)||c.lines.length<1||c.lines.length>6||!c.lines.every(x=>typeof x==='string'))fail('가사 열 오류: '+f.id);
       if(rows!==undefined&&rows!==c.lines.length)fail('빈 행 포함 좌우 행 수 일치 필요: '+f.id);
       rows=c.lines.length;
     }
+    if(f.kind!=='black'&&!f.columns.some(c=>c.lines.some(str)))fail('모든 열이 비어 있음: '+f.id);
     if(f.kind==='overlap'&&f.columns.some(c=>!str(c.actor)))fail('동시 가창 화자 필요');
     if(f.kind==='place'&&p.blocks[i].kind!=='place')fail('장소 큐 원본 불일치');
     if(['solo','overlap'].includes(f.kind)&&p.blocks[i].kind!=='lyric')fail('가사 큐 원본 불일치');
