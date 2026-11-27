@@ -1,4 +1,5 @@
 import {validatePackage,initialPlayback} from './model.mjs';
+import {editCueRevision} from './cue-editor.mjs';
 import {demo} from './demo.mjs';
 import {readSettings} from './caption-style.mjs';
 import {compareRevisions,assertActivation} from './revision-review.mjs';
@@ -45,6 +46,22 @@ export async function importBrowserDeck(file,previous){
  const lib=await readLibrary();lib.versions.set(id,deck);
  await put('versions',[...lib.versions].filter(([k])=>k!=='demo').map(([id,deck])=>({id,deck})));
  return withWidths(snapshot(lib,previous));
+}
+export async function editBrowserCue(expected,patch,previous){
+ const lib=await readLibrary();
+ if(lib.active!==expected||previous.active!==expected||previous.output.open)throw Error('현재 대본을 다시 확인하세요.');
+ const base=lib.versions.get(expected),candidate=editCueRevision(base,patch);
+ const raw=JSON.stringify(candidate,null,2);
+ if(new TextEncoder().encode(raw).length>20*1024*1024)throw Error('20MB 초과');
+ const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw));
+ const id=Array.from(new Uint8Array(bytes),v=>v.toString(16).padStart(2,'0')).join('');
+ if(!lib.versions.has(id)){
+  await saveBrowserStyle(id,readSettings(previous.captionSettings,previous.captionFont,previous.captionScale));
+  await saveBrowserWidths(id,previous.captionWidths??{});
+  lib.versions.set(id,candidate);
+  await put('versions',[...lib.versions].filter(([k])=>k!=='demo').map(([id,deck])=>({id,deck})));
+ }
+ return {baseId:expected,candidateId:id,...compareRevisions(base,candidate)};
 }
 export async function compareBrowserDeck(id){
  const lib=await readLibrary();if(!lib.versions.has(id))throw new Error('대본 버전을 찾을 수 없습니다');
