@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('deckAPI',{
   displays:()=>ipcRenderer.invoke('deck:displays'),
   start:(id)=>ipcRenderer.invoke('deck:start',id),
   stop:()=>ipcRenderer.invoke('deck:stop'),
+  setCaptionScale:(value)=>ipcRenderer.invoke('deck:caption-scale',value),
   testOutput:(enabled)=>ipcRenderer.invoke('deck:test-output',enabled),
   importDeck:()=>ipcRenderer.invoke('deck:import'),
   compare:(id)=>ipcRenderer.invoke('deck:compare',id),

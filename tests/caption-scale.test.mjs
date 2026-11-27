@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {validScale,readScale,captionTarget,fitCaption,advanceStyleSequence} from '../src/caption-scale.mjs';
+test('scale accepts only safe 5 percent increments',()=>{for(const v of [90,95,100,105,110,115,120])assert.equal(validScale(v),true);for(const v of [0,89,91,121,Infinity,NaN,'100',null])assert.equal(validScale(v),false);assert.equal(readScale(500),100)});
+test('audience target preserves 16:9 proportions and duet hierarchy',()=>{const a=captionTarget(1920,1080,1,100);assert.ok(Math.abs(captionTarget(1920,1080,1,120)/a-1.2)<1e-9);assert.ok(Math.abs(captionTarget(960,540,1,100)/a-.5)<1e-9);assert.ok(captionTarget(1920,1080,2,100)<a)});
+test('fit never exceeds requested cap and reports impossible fit',()=>{assert.deepEqual(fitCaption(20.3,x=>x<=17.8),{size:17.5,fits:true});assert.deepEqual(fitCaption(20.3,()=>true),{size:20,fits:true});assert.deepEqual(fitCaption(20,()=>false),{size:.5,fits:false})});
+test('style change preserves current cue and black status',()=>{assert.deepEqual(advanceStyleSequence({index:6,blackout:true,sequence:9}),{index:6,blackout:true,sequence:10})});
