@@ -1,5 +1,6 @@
 import {validatePackage,initialPlayback} from './model.mjs';
 import {demo} from './demo.mjs';
+import {readSettings} from './caption-style.mjs';
 import {compareRevisions,assertActivation} from './revision-review.mjs';
 // Browser rehearsal storage is independent of the Electron production library.
 const openDB=()=>new Promise((resolve,reject)=>{
@@ -31,7 +32,8 @@ function snapshot(lib,previous,reset=false){
  return {...previous,revision:previous.revision+1,active:lib.active,deck:lib.versions.get(lib.active),state:reset?{...initialPlayback(),sequence:previous.state.sequence+1}:previous.state,versions:[...lib.versions].map(([id,d])=>({id,title:d.title,revision:d.revision,count:d.frames.length}))};
 }
 export async function saveBrowserWidths(active,overrides){await put('caption-widths:'+active,overrides)}
-async function withWidths(s){return {...s,captionWidths:await get('caption-widths:'+s.active)??{}}}
+export async function saveBrowserStyle(active,value){await put('caption-style:'+active,value)}
+async function withWidths(s){const value=await get('caption-style:'+s.active);return {...s,captionWidths:await get('caption-widths:'+s.active)??{},captionSettings:value==null?null:readSettings(value)}}
 export async function loadBrowserLibrary(previous){return withWidths(snapshot(await readLibrary(),previous,true))}
 export async function importBrowserDeck(file,previous){
  if(!file)return previous;

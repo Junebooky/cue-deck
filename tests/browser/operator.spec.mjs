@@ -86,12 +86,9 @@ test('long operator lines fit after narrowing the monitor, all overlap rows shar
 test('place cards have centered pin and operator monitor uses moderate proportional font',async({page})=>{await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await expect(page.locator('.block.place .place-pin')).toHaveCount(3);await expect(page.locator('.block.dialogue .block-kind').first()).toHaveText('드라마');await go(page).click();const p=page.locator('.program-frame');await expect.poll(()=>p.locator('.caption-grid').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(15);await expect.poll(()=>p.locator('.caption-grid').evaluate(e=>parseFloat(getComputedStyle(e).fontSize)/e.closest('.operator-caption').clientWidth)).toBeLessThanOrEqual(.058);await page.goto('/?mode=audience');await expect(page.locator('.place-pin')).toHaveCount(0)});
 
 test('caption size draft is local, limits are enforced, apply retains cue and persists',async({page})=>{
- await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();
- const program=page.locator('.program-frame');await expect(program).toHaveAttribute('data-scale','100');
- await page.getByRole('button',{name:'자막 크기 100%'}).click();const slider=page.getByRole('slider',{name:'관객 자막 크기'});await expect(slider).toHaveAttribute('min','90');await expect(slider).toHaveAttribute('max','120');await expect(slider).toHaveAttribute('step','5');
- await slider.focus();await page.keyboard.press('End');await expect(page.getByRole('button',{name:'자막 크기 늘리기'})).toBeDisabled();await expect(program).toHaveAttribute('data-scale','100');await page.getByRole('button',{name:'취소'}).click();await expect(program).toHaveAttribute('data-scale','100');
- await page.getByRole('button',{name:'자막 크기 100%'}).click();await page.getByRole('slider',{name:'관객 자막 크기'}).focus();await page.keyboard.press('End');await page.getByRole('button',{name:'자막 크기 적용'}).click();await expect(program).toHaveAttribute('data-scale','120');await expect(page.locator('.live-label')).toContainText('001 / 9');await page.reload();await expect(page.getByRole('button',{name:'자막 크기 120%'})).toBeVisible();
- await page.getByRole('button',{name:'자막 크기 120%'}).click();await page.getByRole('slider',{name:'관객 자막 크기'}).focus();await page.keyboard.press('Home');await expect(page.getByRole('button',{name:'자막 크기 줄이기'})).toBeDisabled();await page.getByRole('button',{name:'기본값'}).click();await page.getByRole('button',{name:'자막 크기 적용'}).click();await expect(page.getByRole('button',{name:'자막 크기 100%'})).toBeVisible();
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();const program=page.locator('.monitors .program-frame');
+ await page.getByRole('button',{name:'자막 스타일 100%'}).click();const slider=page.getByRole('slider',{name:'관객 자막 크기'});await expect(slider).toHaveAttribute('min','90');await expect(slider).toHaveAttribute('max','120');await slider.focus();await page.keyboard.press('End');await expect(program).toHaveAttribute('data-scale','100');await page.getByRole('button',{name:'취소'}).click();
+ await page.getByRole('button',{name:'자막 스타일 100%'}).click();await page.getByRole('slider',{name:'관객 자막 크기'}).focus();await page.keyboard.press('End');await page.getByRole('button',{name:'스타일 적용'}).click();await expect(program).toHaveAttribute('data-scale','120');await expect(page.locator('.live-label')).toContainText('001 / 9');await page.reload();await expect(page.getByRole('button',{name:'자막 스타일 120%'})).toBeVisible();await page.getByRole('button',{name:'자막 스타일 120%'}).click();await page.getByRole('button',{name:'기본형',exact:true}).click();await page.getByRole('button',{name:'스타일 적용'}).click();await expect(page.getByRole('button',{name:'자막 스타일 100%'})).toBeVisible();
 });
 
 test('C group highlights all source lines and advances once per audience cue',async({page})=>{
@@ -102,15 +99,11 @@ test('C group highlights all source lines and advances once per audience cue',as
 });
 
 test('bundled fonts load locally, switch both monitors without advancing cue, persist',async({page})=>{
- const external=[];page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:4173/')&&!r.url().startsWith('data:'))external.push(r.url())});
- await page.route('**/*',route=>route.request().url().startsWith('http://127.0.0.1:4173/')?route.continue():route.abort());
- await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();
- const selector=page.getByRole('combobox',{name:'관객 자막 폰트'});for(const [id,family] of [['noto-sans','Noto Sans KR'],['ibm-plex','IBM Plex Sans KR'],['noto-serif','Noto Serif KR'],['pretendard','Pretendard Variable']]){
-  await selector.selectOption(id);await expect(page.locator('.program-frame')).toHaveAttribute('data-font',id);await expect(page.locator('.preview-frame')).toHaveAttribute('data-font',id);
-  await expect.poll(()=>page.evaluate(async family=>{const faces=await document.fonts.load('600 24px "'+family+'"','가나다 경성 ABC');return faces.length>0&&faces.every(f=>f.status==='loaded')},family)).toBe(true);
-  await expect(page.locator('.live-label')).toContainText('001 / 9');
+ const external=[];page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:4173/')&&!r.url().startsWith('data:'))external.push(r.url())});await page.route('**/*',route=>route.request().url().startsWith('http://127.0.0.1:4173/')?route.continue():route.abort());await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();
+ for(const [id,family,w] of [['noto-sans','Noto Sans KR',700],['ibm-plex','IBM Plex Sans KR',500],['noto-serif','Noto Serif KR',600],['pretendard','Pretendard Variable',700]]){
+ await page.getByRole('button',{name:'자막 스타일 100%'}).click();await page.getByRole('combobox',{name:'관객 자막 폰트'}).selectOption(id);await page.getByRole('button',{name:new RegExp(' · '+w+'$')}).click();await page.getByRole('button',{name:'스타일 적용'}).click();await expect(page.locator('.program-frame')).toHaveAttribute('data-font',id);await expect(page.locator('.preview-frame')).toHaveAttribute('data-font',id);await expect(page.locator('.program-frame .caption-grid')).toHaveCSS('font-weight',String(w));await expect.poll(()=>page.evaluate(async([family,w])=>{const faces=await document.fonts.load(w+' 24px "'+family+'"','가나다 경성 ABC');return faces.length>0&&faces.every(f=>f.status==='loaded')},[family,w])).toBe(true);await expect(page.locator('.live-label')).toContainText('001 / 9');
  }
- await selector.selectOption('noto-serif');await expect(page.locator('.program-frame')).toHaveAttribute('data-font','noto-serif');await page.reload();await expect(selector).toHaveValue('noto-serif');expect(external).toEqual([]);
+ await page.reload();await page.getByRole('button',{name:'자막 스타일 100%'}).click();await expect(page.getByRole('combobox',{name:'관객 자막 폰트'})).toHaveValue('pretendard');expect(external).toEqual([]);
 });
 
 test('legacy two-line audience frame groups both source cards; heading is a centered separator with cue preserved',async({page})=>{
@@ -215,4 +208,10 @@ test('audience renderer and operator use identical adaptive ratios, preserve bla
  await expect(page.locator('.caption-boundary')).toHaveCount(0);await expect(page.getByRole('slider')).toHaveCount(0);
  const cols=await audience.locator('.caption-grid').evaluate(el=>{const cs=getComputedStyle(el);return {widths:cs.gridTemplateColumns.split(' ').map(parseFloat),sizes:new Set([...el.querySelectorAll('.caption-cell')].map(c=>getComputedStyle(c).fontSize)).size}});
  expect(cols.widths[0]/cols.widths[1]).toBeCloseTo(70/30,1);expect(cols.sizes).toBe(1);
+});
+
+test('solo review stores a local override and leaves current program unchanged until GO',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();await go(page).click();
+ await page.getByRole('button',{name:'장문 · 큐 스타일 조절'}).click();await page.getByRole('slider',{name:'큐별 글자 크기'}).focus();await page.keyboard.press('Home');await page.getByRole('button',{name:'큐 스타일 저장'}).click();await expect(page.getByRole('button',{name:'큐 스타일 저장'})).toBeDisabled();await page.getByRole('button',{name:'닫기',exact:true}).click();await expect(page.locator('.live-label')).toContainText('002 / 9');await go(page).click();await expect(page.locator('.program-frame .caption-cell')).toHaveCount(2);
+ await page.reload();await page.getByRole('button',{name:'장문 가사 검수',exact:true}).click();await expect(page.getByRole('slider',{name:'큐별 글자 크기'})).toHaveValue('85');await page.getByRole('button',{name:'전역값 복원'}).click();await page.getByRole('button',{name:'큐 스타일 저장'}).click();await expect(page.getByRole('slider',{name:'큐별 글자 크기'})).toHaveValue('100');
 });

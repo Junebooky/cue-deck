@@ -11,18 +11,22 @@ import {validScale,readScale,advanceStyleSequence} from '../src/caption-scale.mj
 import {validFont,readFont,DEFAULT_FONT} from '../src/caption-fonts.mjs';
 import {isNativeCueShortcut} from '../src/shortcuts.mjs';
 import {cueWidths,updateWidths,assertWidthEdit} from '../src/caption-widths.mjs';
+import {readSettings,effectiveStyle,editSettings} from '../src/caption-style.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
 let operator=null,audience=null,displayId=null,ready=false,ack=-1,deck=validatePackage(demo),state=initialPlayback(),versions=new Map([['demo',deck]]),active='demo';
 let ackTimer=null,startTimer=null,placementTimer=null,revision=0,changingDeck=false,outputError='',testing=false,started=false,ackDeadline=0;
 const mac=process.platform==='darwin';
-let captionScale=100,captionFont=DEFAULT_FONT,scaleChanging=false,widthChanging=false,captionWidths={},widthLoadError='';
+let captionScale=100,captionFont=DEFAULT_FONT,scaleChanging=false,widthChanging=false,captionWidths={},widthLoadError='',captionSettings=null,styleLoadError='';
+const stylePath=id=>path.join(app.getPath('userData'),'shows',id+'.style.json');
+async function loadStyle(id){try{return readSettings(JSON.parse(await readFile(stylePath(id),'utf8')))}catch(e){if(e.code==='ENOENT')return null;throw Error('자막 스타일 읽기 실패: '+e.message)}}
+const settings=()=>readSettings(captionSettings,captionFont,captionScale);
 const widthPath=id=>path.join(app.getPath('userData'),'shows',id+'.widths.json');
 async function loadWidths(id){try{const v=JSON.parse(await readFile(widthPath(id),'utf8'));return v&&typeof v==='object'&&!Array.isArray(v)?v:{}}catch(e){if(e.code==='ENOENT')return {};throw Error('열 너비 설정을 읽을 수 없습니다: '+e.message)}}
 const scalePath=()=>path.join(app.getPath('userData'),'caption-scale.json');
 async function loadScale(){try{const saved=JSON.parse(await readFile(scalePath(),'utf8'));captionScale=readScale(saved.scale);captionFont=readFont(saved.font)}catch{captionScale=100;captionFont=DEFAULT_FONT}}
 const dataDir=()=>path.join(app.getPath('userData'),'shows');
-const snapshot=()=>({revision:++revision,deck,state,active,captionScale,captionFont,captionWidths,versions:[...versions].map(([id,d])=>({id,title:d.title,revision:d.revision,count:d.frames.length})),output:{open:!!audience&&!audience.isDestroyed(),ready,displayId,ack,error:outputError,testing,testView:testing?output().view:null}});
-const output=()=>({sequence:state.sequence,captionScale,captionFont,ratios:testing?null:cueWidths(captionWidths,deck.frames[state.index]),view:testing?testView(displays().find(d=>d.id===displayId)??{label:'Display',width:0,height:0}):viewFor(deck,state)});
+const snapshot=()=>({revision:++revision,deck,state,active,captionScale:settings().style.scale,captionFont:settings().style.font,captionSettings,captionWidths,versions:[...versions].map(([id,d])=>({id,title:d.title,revision:d.revision,count:d.frames.length})),output:{open:!!audience&&!audience.isDestroyed(),ready,displayId,ack,error:outputError,testing,testView:testing?output().view:null}});
+const output=()=>({sequence:state.sequence,captionScale:settings().style.scale,captionFont:settings().style.font,typography:effectiveStyle(settings(),testing?null:deck.frames[state.index]),ratios:testing?null:cueWidths(captionWidths,deck.frames[state.index]),view:testing?testView(displays().find(d=>d.id===displayId)??{label:'Display',width:0,height:0}):viewFor(deck,state)});
 const notify=()=>{if(operator&&!operator.isDestroyed())operator.webContents.send('deck:state-update',snapshot())};
 function validPlacement(w){
  const d=screen.getAllDisplays().find(d=>d.id===displayId);
@@ -103,6 +107,13 @@ function register(){
    captionFont=value;state=advanceStyleSequence(state);sendOutput();notify();return snapshot();
   }finally{scaleChanging=false}
  });
+ ipcMain.handle('deck:caption-style',async(e,expected,index,value)=>{
+  requireOperator(e);if(styleLoadError)throw Error(styleLoadError);
+  if(active!==expected||changingDeck||scaleChanging||widthChanging||(audience&&!ready))throw Error('대본 또는 송출 준비 상태를 확인하세요.');
+  const updated=editSettings(settings(),deck,index,value,!!audience,state.index);
+  scaleChanging=true;
+  try{const temp=stylePath(active)+'.tmp';await writeFile(temp,JSON.stringify(updated),'utf8');await rename(temp,stylePath(active));captionSettings=updated;if(index===null){state=advanceStyleSequence(state);sendOutput()}notify();return snapshot()}finally{scaleChanging=false}
+ });
  ipcMain.handle('deck:caption-widths',async(e,expected,index,value)=>{
   requireOperator(e);if(widthLoadError)throw Error(widthLoadError);if(changingDeck||scaleChanging||widthChanging)throw Error('다른 설정 작업 중입니다.');
   const frame=assertWidthEdit(deck,active,expected,index,value,!!audience,state.index);
@@ -110,10 +121,10 @@ function register(){
   try{const next=updateWidths(captionWidths,frame,value);const temp=widthPath(active)+'.tmp';await writeFile(temp,JSON.stringify(next),'utf8');await rename(temp,widthPath(active));captionWidths=next;notify();return snapshot()}finally{widthChanging=false}
  });
  ipcMain.handle('deck:test-output',(e,enabled)=>{requireOperator(e);if(!audience||!started||!ready)throw new Error('관객 화면 연결 확인 후 테스트하세요');testing=enabled===true;state=playback(state,{type:'BLACK'},deck.frames.length);sendOutput();notify();return snapshot()});
- ipcMain.handle('deck:command',(e,action)=>{requireOperator(e);if(!action||!['GO','PREV','BLACK','RESTORE'].includes(action.type))throw new Error('지원하지 않는 명령');if(widthChanging&&action.type!=='BLACK')throw Error('열 너비 저장 중입니다.');if(testing&&action.type!=='BLACK')throw new Error('화면 테스트를 종료한 후 송출하세요');if(action.type!=='BLACK'&&audience&&!ready)throw new Error('관객 화면 준비 확인 대기');if(action.type==='BLACK')testing=false;state=playback(state,action,deck.frames.length);sendOutput();notify();return snapshot()});
+ ipcMain.handle('deck:command',(e,action)=>{requireOperator(e);if(!action||!['GO','PREV','BLACK','RESTORE'].includes(action.type))throw new Error('지원하지 않는 명령');if((widthChanging||scaleChanging)&&action.type!=='BLACK')throw Error('열 너비 저장 중입니다.');if(testing&&action.type!=='BLACK')throw new Error('화면 테스트를 종료한 후 송출하세요');if(action.type!=='BLACK'&&audience&&!ready)throw new Error('관객 화면 준비 확인 대기');if(action.type==='BLACK')testing=false;state=playback(state,action,deck.frames.length);sendOutput();notify();return snapshot()});
  ipcMain.handle('deck:import',async e=>{requireOperator(e);if(audience||changingDeck)throw new Error('공연 종료 및 기존 작업 완료 후 대본을 불러오세요');changingDeck=true;try{const res=await dialog.showOpenDialog(operator,{properties:['openFile'],filters:[{name:'Cue Deck JSON',extensions:['json']}]});if(res.canceled)return snapshot();const file=res.filePaths[0];if((await stat(file)).size>20*1024*1024)throw new Error('20MB 초과');const raw=await readFile(file,'utf8');const parsed=validatePackage(JSON.parse(raw));if(audience)throw new Error('공연 중에는 대본 변경 불가');const id=createHash('sha256').update(raw).digest('hex');await writeFile(path.join(dataDir(),id+'.json'),raw,{flag:'wx'}).catch(err=>{if(err.code!=='EEXIST')throw err});versions.set(id,parsed);notify();return snapshot()}finally{changingDeck=false}});
  ipcMain.handle('deck:compare',(e,id)=>{requireOperator(e);if(audience||changingDeck||!versions.has(id))throw new Error('공연 종료 후 비교하세요');return {baseId:active,candidateId:id,...compareRevisions(deck,versions.get(id))}});
- ipcMain.handle('deck:activate',async(e,id,options)=>{requireOperator(e);if(audience||changingDeck||widthChanging||!versions.has(id))throw new Error('대본 변경 불가');assertActivation(active,deck,id,versions.get(id),options);changingDeck=true;try{const nextWidths=await loadWidths(id);await persistActive(id);if(audience)throw new Error('공연 중에는 대본 변경 불가');active=id;deck=versions.get(id);captionWidths=nextWidths;widthLoadError='';state=playback(state,{type:'RESET'},deck.frames.length);notify();return snapshot()}finally{changingDeck=false}});
+ ipcMain.handle('deck:activate',async(e,id,options)=>{requireOperator(e);if(audience||changingDeck||widthChanging||scaleChanging||!versions.has(id))throw new Error('대본 변경 불가');assertActivation(active,deck,id,versions.get(id),options);changingDeck=true;try{const nextWidths=await loadWidths(id),nextStyle=await loadStyle(id);await persistActive(id);if(audience)throw new Error('공연 중에는 대본 변경 불가');active=id;deck=versions.get(id);captionWidths=nextWidths;widthLoadError='';captionSettings=nextStyle;styleLoadError='';state=playback(state,{type:'RESET'},deck.frames.length);notify();return snapshot()}finally{changingDeck=false}});
 }
-if(!app.requestSingleInstanceLock())app.quit();else app.whenReady().then(async()=>{await loadVersions();await loadScale();try{captionWidths=await loadWidths(active)}catch(e){widthLoadError=e.message;dialog.showErrorBox('Cue Deck · 열 너비',e.message);captionWidths={}}register();operator=win({width:1440,height:900,minWidth:1000,minHeight:650,show:true,title:'Cue Deck'},'operator');loadWindow(operator,'operator').catch(err=>dialog.showErrorBox('Cue Deck',err.message));operator.on('closed',()=>{operator=null;stopOutput();app.quit()});app.on('second-instance',()=>operator?.focus());screen.on('display-removed',(_e,d)=>{if(d.id===displayId)stopOutput('선택한 디스플레이 연결이 해제되었습니다.');else notify()});screen.on('display-added',notify);screen.on('display-metrics-changed',(_e,d,metrics)=>{if(d.id===displayId&&started&&metrics.some(m=>['bounds','rotation','scaleFactor'].includes(m))){if(!validPlacement(audience))stopOutput('송출 디스플레이 배치가 변경되었습니다.');else notify()}else notify()});});
+if(!app.requestSingleInstanceLock())app.quit();else app.whenReady().then(async()=>{await loadVersions();await loadScale();try{captionSettings=await loadStyle(active)}catch(e){styleLoadError=e.message;dialog.showErrorBox('Cue Deck · 자막 스타일',e.message)}try{captionWidths=await loadWidths(active)}catch(e){widthLoadError=e.message;dialog.showErrorBox('Cue Deck · 열 너비',e.message);captionWidths={}}register();operator=win({width:1440,height:900,minWidth:1000,minHeight:650,show:true,title:'Cue Deck'},'operator');loadWindow(operator,'operator').catch(err=>dialog.showErrorBox('Cue Deck',err.message));operator.on('closed',()=>{operator=null;stopOutput();app.quit()});app.on('second-instance',()=>operator?.focus());screen.on('display-removed',(_e,d)=>{if(d.id===displayId)stopOutput('선택한 디스플레이 연결이 해제되었습니다.');else notify()});screen.on('display-added',notify);screen.on('display-metrics-changed',(_e,d,metrics)=>{if(d.id===displayId&&started&&metrics.some(m=>['bounds','rotation','scaleFactor'].includes(m))){if(!validPlacement(audience))stopOutput('송출 디스플레이 배치가 변경되었습니다.');else notify()}else notify()});});
 app.on('window-all-closed',()=>app.quit());
