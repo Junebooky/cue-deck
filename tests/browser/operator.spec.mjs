@@ -308,3 +308,50 @@ test('audience expands a single-active overlap and restores the split for a real
  await expect(caption.locator('.caption-cell')).toHaveCount(4);
  await expect(caption.locator('.caption-actor')).toHaveCount(2);
 });
+
+test('lyric search confirmation starts the exact slide and continues in sequence',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
+ const search=page.getByRole('textbox',{name:'대사 · 가사 검색'});
+ await page.getByRole('button',{name:'FOLLOW ON'}).click();
+ await search.fill('우리의 길을 찾아가');
+ await expect(page.locator('.live-label')).toContainText('— / 9');
+ await page.getByRole('button',{name:'검색 위치 슬라이드 시작'}).click();
+ const confirm=page.getByRole('dialog',{name:'검색 위치 송출 확인'});
+ await expect(confirm).toContainText('CUE 003');
+ await expect(confirm.locator('.caption-cell')).toHaveText(['새로운 하루를 열어','우리의 길을 찾아가']);
+ await confirm.getByRole('button',{name:'취소'}).click();
+ await expect(page.locator('.live-label')).toContainText('— / 9');
+ await page.getByRole('button',{name:'검색 위치 슬라이드 시작'}).click();
+ await confirm.getByRole('button',{name:'확인 · 슬라이드 시작'}).click();
+ await expect(page.locator('.live-label')).toContainText('003 / 9');
+ await expect(page.locator('.program-frame .caption-cell')).toHaveText(['새로운 하루를 열어','우리의 길을 찾아가']);
+ await expect(search).toHaveValue('');
+ await go(page).click();
+ await expect(page.locator('.live-label')).toContainText('004 / 9');
+ await search.fill('악보');
+ await expect(page.getByRole('button',{name:'검색 위치 슬라이드 시작'})).toBeDisabled();
+ await expect(page.locator('.live-label')).toContainText('004 / 9');
+});
+
+test('searching a reviewed second source block starts the whole grouped slide',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);
+ d.productionId='search-group-fixture';d.title='검색 그룹 검증';
+ d.blocks[3].text='새로운 하루를 열어';
+ d.blocks.splice(4,0,{...d.blocks[3],id:'second-search-line',text:'우리의 길을 찾아가'});
+ d.frames[2].sourceBlockIds=['b4','second-search-line'];
+ await page.goto('/');
+ await page.getByRole('button',{name:'대본 관리'}).click();
+ await page.getByLabel('공연 데이터 파일').setInputFiles({name:'search-group.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});
+ await page.locator('.version').filter({hasText:'검색 그룹 검증'}).getByRole('button',{name:'활성화'}).click();
+ await expect(page.locator('.brand')).toContainText('검색 그룹 검증');
+ await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('우리의 길을 찾아가');
+ await expect(page.locator('#block-second-search-line')).toHaveClass(/active-hit/);
+ await page.getByRole('button',{name:'검색 위치 슬라이드 시작'}).click();
+ await page.getByRole('dialog',{name:'검색 위치 송출 확인'}).getByRole('button',{name:'확인 · 슬라이드 시작'}).click();
+ await expect(page.locator('.live-label')).toContainText('003 / 9');
+ await expect(page.locator('.cue-group.live [data-cue-status=LIVE]')).toHaveCount(2);
+ await go(page).click();
+ await expect(page.locator('.live-label')).toContainText('004 / 9');
+});
