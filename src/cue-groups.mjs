@@ -1,3 +1,4 @@
+import {displaySource} from './source-display.mjs';
 // Explicit reviewed source membership. Never guess from adjacent or repeated lyrics.
 export function validateCueGroups(deck){
  const positions=new Map(deck.blocks.map((b,i)=>[b.id,i]));
@@ -27,12 +28,7 @@ export function validateCueGroups(deck){
 // match starting at the existing anchor and ending before the next cue.
 // Explicit reviewed membership always takes precedence.
 const canon=s=>String(s??'').normalize('NFC').replace(/\s+/gu,'');
-function lyricText(b){
- const text=b.text;
- // DOCX may include an explicit actor prefix in the original paragraph.
- const tab=text.indexOf('\t');
- return tab>=0&&canon(text.slice(0,tab))===canon(b.actor)&&canon(b.actor)?text.slice(tab+1):text;
-}
+function lyricText(b){return displaySource(b).text}
 function matchesFrame(frame,blocks){
  if(frame.kind==='solo'){
   if(blocks.some(b=>b.sourceCells))return false;

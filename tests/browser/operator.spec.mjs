@@ -168,3 +168,10 @@ test('B/E physical keys work on focused buttons, Korean layout and Ctrl aliases;
  const search=page.getByRole('textbox',{name:'대사 · 가사 검색'});await search.focus();await page.keyboard.press('Control+b');await page.keyboard.press('Control+e');await page.keyboard.press('b');await page.keyboard.press('e');await expect(search).toHaveValue('be');await expect(program.locator('.caption-cell')).toHaveCount(0);await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');
  await search.press('Escape');await page.keyboard.press('Control+b');await expect(program.locator('.caption-cell')).toHaveCount(1);await expect(page.locator('.live-label')).toContainText('001 / 9');
 });
+
+test('speaker prefix stays in header only; source lyric formatting and audience frame remain intact',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);d.productionId='speaker-display-fixture';d.title='화자 중복 표시 테스트';d.blocks[3].text='배우 A\t새로운 하루를 열어';d.blocks[3].runs=[{text:'배우 A',bold:true},{text:'\t'},{text:'새로운 하루를 열어',bold:true}];d.blocks.splice(4,0,{id:'speaker-second',sceneId:'s1',kind:'lyric',actor:'배우 A',text:'우리의 길을 찾아가'});d.frames[2].sourceBlockIds=['b4','speaker-second'];
+ await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();await page.getByLabel('공연 데이터 파일').setInputFiles({name:'speaker.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});await page.locator('.version').filter({hasText:'화자 중복 표시 테스트'}).getByRole('button',{name:'활성화'}).click();await expect(page.locator('.brand')).toContainText('화자 중복 표시 테스트');await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await expect(page.locator('#block-b4 .actor-label')).toHaveText('배우 A');await expect(page.locator('#block-b4 .block-text')).toHaveText('새로운 하루를 열어');await expect(page.locator('#block-b4 .source-bold')).toHaveText('새로운 하루를 열어');
+ await go(page).click();await go(page).click();await go(page).click();await expect(page.locator('.cue-group.live .block-text')).toHaveText(['새로운 하루를 열어','우리의 길을 찾아가']);await expect(page.locator('.program-frame .caption-cell')).toHaveText(['새로운 하루를 열어','우리의 길을 찾아가']);
+});

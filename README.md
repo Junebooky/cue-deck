@@ -58,3 +58,5 @@ Start a rehearsal from 리허설 노트. E marks only the current live cue or RE
 
 ## Keyboard reliability
 B or Ctrl+B uses the existing BLACK/RESTORE toggle (READ stays black); E or Ctrl+E marks the active LIVE/READ position only in a started rehearsal. Physical KeyB/KeyE work across keyboard layouts outside active IME composition. Capture-phase keyboard handling allows focused console buttons while protecting text fields, selectors, splitters and dialogs. Electron reserves those shortcuts from the application menu only in the operator window, not system-wide. The operator window must be focused. Holding a key never repeats a toggle or mark. Busy/unavailable actions display a notice. No change to Space or arrow playback semantics.
+
+The script reader shows exact tab-delimited duplicate speaker prefixes in the actor header only, while preserving the source paragraph and formatting in the imported package. Genuine names within lyrics, table cells, and audience frames are unchanged. Rehearsal notes retain the original source text for audit.
