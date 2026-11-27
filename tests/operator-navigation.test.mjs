@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {demo} from '../src/demo.mjs';
+import {cleanPrefs,fitLayout,buildNavigation,searchBlocks,cueTarget,stepMatch} from '../src/operator-navigation.mjs';
+test('scene and cue navigation preserves original ordering and source ids',()=>{const n=buildNavigation(demo);assert.deepEqual(n.byScene.get('s1').cues,[0,1,2,3,4]);assert.equal(n.byScene.get('s1').blocks.length,7);assert.deepEqual(n.byBlock.get('b3'),[1]);assert.equal(n.byScene.get('s2').numbers[0].blockId,'b8')});
+test('search includes dialogue, NAR, original table cells, numbers and preserves order',()=>{const b=structuredClone(demo.blocks);b[3].sourceCells=['','특별  가사'];b[3].number='M99';assert.deepEqual(searchBlocks(b,'악보'),['b2']);assert.deepEqual(searchBlocks(b,'특별 가사'),['b4']);assert.deepEqual(searchBlocks(b,'m99'),['b4']);assert.deepEqual(searchBlocks(b,'   '),[]);assert.equal(stepMatch(0,-1,3),2);assert.equal(stepMatch(2,1,3),0)});
+test('non-sequential target requires explicit confirmation flag',()=>{assert.deepEqual(cueTarget(-1,null,9),{sequential:0,target:0,jump:false});assert.deepEqual(cueTarget(1,5,9),{sequential:2,target:5,jump:true});assert.equal(cueTarget(8,null,9).target,null);assert.equal(cueTarget(2,99,9).target,3)});
+test('preferences reject invalid numbers and keep reader space on laptop',()=>{const p=cleanPrefs({sceneWidth:Infinity,monitorWidth:-30,fontSize:99});assert.equal(p.sceneWidth,200);assert.equal(p.monitorWidth,260);assert.equal(p.fontSize,28);const a=fitLayout(980,{sceneOpen:true,sceneWidth:340,monitorWidth:600});assert.ok(980-a.left-a.right-20>=320);const b=fitLayout(980,{sceneOpen:false,monitorWidth:390});assert.equal(b.left,0);assert.equal(b.right,390)});

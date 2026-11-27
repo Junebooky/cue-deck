@@ -14,3 +14,5 @@ jobs:
       - run: npm run check
       - run: node --check electron/main.mjs
       - run: node --check electron/preload.cjs
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
