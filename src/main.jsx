@@ -17,7 +17,7 @@ import {MIN_SCALE,MAX_SCALE,SCALE_STEP,DEFAULT_SCALE,readScale,advanceStyleSeque
 import {useCaptionFit} from './useCaptionFit.js';
 import CaptionScaleDialog from './CaptionScaleDialog.jsx';
 import {CAPTION_FONTS,DEFAULT_FONT,readFont,fontFor,captionFamily} from './caption-fonts.mjs';
-import {ensureCaptionFont} from './local-fonts.js';
+import {ensureCaptionFont,ensureStyledFont} from './local-fonts.js';
 import {cueWidths,assertWidthEdit,updateWidths} from './caption-widths.mjs';
 import {saveBrowserWidths} from './browser-library.mjs';
 import CaptionWidthsDialog from './CaptionWidthsDialog.jsx';
@@ -28,11 +28,11 @@ const blockKinds={lyric:'가사',dialogue:'드라마',nar:'NAR',direction:'무�
 const cueKinds={solo:'CUE',overlap:'DUET',place:'PLACE',black:'BLACK'};
 function CueLabel({kind,status}){return <><span className="cue-kind-text">{cueKinds[kind]||'CUE'}</span>{status&&<span className={'cue-state '+status.toLowerCase()}>{status}</span>}</>}
 
-function Caption({view,large=false,scale=DEFAULT_SCALE,font=DEFAULT_FONT,ratios=null}){
+function Caption({view,large=false,scale=DEFAULT_SCALE,font=DEFAULT_FONT,ratios=null,typography}){
  const ref=useRef(null),content=useRef(null);
- const fit=useCaptionFit(ref,content,view,scale,false,font,ratios);
+ const fit=useCaptionFit(ref,content,view,scale,false,font,ratios,typography);
  const n=view.columns.length,rows=view.columns[0]?.lines.length||0;
- return <div ref={ref} className={'caption '+(large?'audience-caption':'monitor-caption')} data-font={font} data-ratios={fit.ratios.join(':')} data-wrap={fit.wrapped} style={{fontFamily:captionFamily(font)}}><div ref={content} className="caption-grid" style={{gridTemplateColumns:'repeat('+Math.max(n,1)+', minmax(0,1fr))'}}>
+ return <div ref={ref} className={'caption '+(large?'audience-caption':'monitor-caption')} data-font={font} data-ratios={fit.ratios.join(':')} data-wrap={fit.wrapped} data-lines={fit.lines} data-reduced={fit.reduced} data-risk={fit.tooSmall||fit.overflow} style={{fontFamily:captionFamily(font)}}><div ref={content} className="caption-grid" style={{gridTemplateColumns:'repeat('+Math.max(n,1)+', minmax(0,1fr))'}}>
  {n>1&&view.columns.map((c,i)=><div key={'h'+i} className="caption-actor">{c.actor}</div>)}
  {Array.from({length:rows},(_,r)=>view.columns.map((c,i)=><div className="caption-cell" key={r+':'+i}>{c.lines[r]||'\u00a0'}</div>))}
  </div></div>
@@ -47,12 +47,12 @@ function Audience(){
    latestSequence=f.sequence;loading=f.sequence;
    const commit=()=>{if(alive&&f.sequence===latestSequence){loading=null;setFrame(old=>f.sequence>=old.sequence?{...f}:old)}};
    if(f.view.kind==='black'){commit();return}
-   ensureCaptionFont(readFont(f.captionFont),f.view).then(commit).catch(()=>{if(f.sequence===latestSequence)loading=null});
+   ensureStyledFont(readFont(f.captionFont),f.typography?.weight??600,f.view).then(commit).catch(()=>{if(f.sequence===latestSequence)loading=null});
   };
   const off=api.onOutput(receive);api.outputState().then(receive).catch(()=>{});return()=>{alive=false;off()};
  },[]);
  useEffect(()=>{if(frame.sequence<0)return;let a,b;a=requestAnimationFrame(()=>{b=requestAnimationFrame(()=>api?.ack(frame.sequence))});return()=>{cancelAnimationFrame(a);cancelAnimationFrame(b)}},[frame]);
- return <main className="audience"><Caption view={frame.view} scale={readScale(frame.captionScale)} font={readFont(frame.captionFont)} ratios={frame.ratios??null} large/></main>
+ return <main className="audience"><Caption view={frame.view} scale={readScale(frame.captionScale)} font={readFont(frame.captionFont)} ratios={frame.ratios??null} typography={frame.typography} large/></main>
 }
 function PlaceIcon(){return <svg className="place-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 10c0 5.2-8 11-8 11S4 15.2 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.7"/></svg>}
 function SourceRuns({runs,text}){return Array.isArray(runs)?runs.map((r,i)=><span key={i} className={(r.bold?'source-bold ':'')+(r.red?'source-red ':'')+(r.italic?'source-italic':'')}>{r.text}</span>):text}
