@@ -12,5 +12,5 @@ export function blockedShortcutTarget(target){
  return !!(target?.isContentEditable||target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="combobox"],[role="spinbutton"],[role="slider"],[role="separator"]'));
 }
 export function isNativeCueShortcut(input){
- return !!shortcutLetter({code:input.code,key:input.key,altKey:input.alt,metaKey:input.meta,shiftKey:input.shift});
+ return (input.key==='Escape'&&!input.control&&!input.alt&&!input.meta&&!input.shift)||!!shortcutLetter({code:input.code,key:input.key,altKey:input.alt,metaKey:input.meta,shiftKey:input.shift});
 }

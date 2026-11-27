@@ -132,3 +132,15 @@
 .console .reader-dense .block.heading.script-divider{padding:5px 3px;margin:3px 0}
 .console .reader-dense .place-card-icon{margin:1px 0 3px}
 .console .reader-dense .place-pin{width:20px;height:20px}
+
+/* A: keep history available but compact in the follow view. */
+.console .script-scroll{overflow-anchor:none}
+.console .reader-unit-content[hidden]{display:none!important}
+.console .past-unit{margin:3px 0}
+.console .past-summary{width:100%;display:flex;align-items:center;gap:8px;padding:4px 7px;min-height:24px;line-height:1.3;text-align:left;background:#20242a;border:1px solid #353c46;color:#a2adbc;font-size:clamp(10px,.82em,13px);border-radius:4px}
+.console .past-summary:hover{background:#2b333e;color:#e0e7f1}
+.console .past-summary .past-id{flex:none;font-size:.9em;color:#aab9cb;font-variant-numeric:tabular-nums}
+.console .past-summary .past-text{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.console .past-summary .past-mark{flex:none;color:#e5bd7b}
+.console .reader-dense .past-summary{padding:2px 5px;min-height:20px;gap:5px}
+.end-output-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}

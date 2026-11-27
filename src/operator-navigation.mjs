@@ -32,4 +32,13 @@ export function cueTarget(index,selected,count){
  const target=Number.isInteger(selected)&&selected>=0&&selected<count?selected:sequential;
  return {sequential,target,jump:target!==null&&target!==sequential};
 }
+// Collapse only source units before the actual reader cursor, never selected/next units.
+export function pastUnit(unit,positions,currentId,protectedIds){
+ const current=positions.get(currentId);
+ return current!==undefined&&unit.blocks.length>0&&unit.blocks.every(b=>positions.has(b.id)&&positions.get(b.id)<current&&!protectedIds.has(b.id));
+}
+export function followScrollOffset(height,span){
+ // Keep the immediate next card visible when both cards fit.
+ return Math.max(0,Math.min(height*.10,height-span-12));
+}
 export function stepMatch(i,delta,count){return count?((i+delta)%count+count)%count:-1}

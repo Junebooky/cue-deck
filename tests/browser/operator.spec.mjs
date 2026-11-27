@@ -182,3 +182,20 @@ test('A minus reaches 9px dense reader, reduces card height, persists and leaves
  const minus=page.getByRole('button',{name:'대본 글자 작게'});for(let i=0;i<8;i++)await minus.click();await expect(minus).toBeDisabled();await expect(page.locator('.script-scroll')).toHaveCSS('font-size','9px');await expect(page.locator('.script-scroll')).toHaveClass(/reader-dense/);expect(await card.evaluate(e=>e.getBoundingClientRect().height)).toBeLessThan(height);await expect(program).toHaveCSS('font-size',captionSize);
  await page.reload();await expect(page.locator('.script-scroll')).toHaveCSS('font-size','9px');await page.getByRole('button',{name:'대본 글자 크기 초기화'}).click();await expect(page.locator('.script-scroll')).toHaveCSS('font-size','17px');await expect(page.locator('.script-scroll')).not.toHaveClass(/reader-dense/);
 });
+
+test('past units compress by reading position, expand without playback and reopen on reverse or search',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowRight');
+ await expect(page.locator('#block-b2')).toHaveClass(/reading-hold/);const summary=page.getByRole('button',{name:'이전 대본 큐 001'});await expect(summary).toBeVisible();await expect(summary).toHaveAttribute('aria-expanded','false');await expect(page.locator('#block-b1')).toBeHidden();
+ await summary.click();await expect(page.locator('#block-b1')).toBeVisible();await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);await summary.click();await expect(page.locator('#block-b1')).toBeHidden();
+ await page.keyboard.press('ArrowLeft');await expect(page.locator('#block-b1')).toBeVisible();await expect(page.locator('.program-frame .caption-cell')).toHaveCount(1);
+ await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowRight');await expect(page.locator('#block-b4')).toBeVisible();await expect(page.locator('#block-b5')).toBeVisible();
+ await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('악보');await expect(page.locator('#block-b2')).toBeVisible();await expect(page.locator('#block-b2')).toHaveClass(/search-hit/);await page.getByRole('button',{name:'현재 위치',exact:true}).click();await expect(page.locator('#block-b2')).toBeHidden();await expect(page.locator('.live-label')).toContainText('003 / 9');
+});
+test('Escape requests end confirmation only for active output; cancels or stops without changing script',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');await page.addInitScript(deck=>{
+  const s={revision:1,deck,state:{index:0,blackout:false,sequence:1},active:'demo',versions:[{id:'demo',title:deck.title,revision:deck.revision,count:deck.frames.length}],output:{open:true,ready:true}};
+  window.stopCalls=0;window.deckAPI={state:async()=>s,onState:()=>()=>{},stop:async()=>{window.stopCalls++;return {...s,revision:2,state:{...s.state,blackout:true,sequence:2},output:{open:false,ready:false}}}};
+ },demo);
+ await page.goto('/');await expect(page.getByRole('button',{name:'공연 종료',exact:true})).toBeEnabled();await page.keyboard.press('Escape');await expect(page.getByText('공연 종료 확인',{exact:true})).toBeVisible();expect(await page.evaluate(()=>window.stopCalls)).toBe(0);await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);expect(await page.evaluate(()=>window.stopCalls)).toBe(0);
+ await page.keyboard.press('Escape');await page.getByRole('button',{name:'공연 종료 · Enter'}).click();await expect(page.getByRole('button',{name:'▶ 공연 시작'})).toBeVisible();expect(await page.evaluate(()=>window.stopCalls)).toBe(1);await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);await expect(page.locator('.live-label')).toContainText('001 / 9');
+});
