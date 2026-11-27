@@ -126,7 +126,7 @@ function Operator(){
  const markBadge=key=>notesByKey.has(key)?<span className="error-mark" title="리허설 오류 기록">⚑ 오류 {notesByKey.get(key)}회</span>:null;
  const sceneId=navigation.blockById.get(holdStep?.blockId??frames[state.index]?.blockId)?.sceneId;
  const scene=navigation.byScene.get(sceneId)?.scene;
- const matches=useMemo(()=>searchBlocks(deck.blocks,query),[deck.blocks,query]);
+ const matches=useMemo(()=>searchBlocks(deck.blocks,query,deck.frames),[deck.blocks,deck.frames,query]);
  const matchSet=useMemo(()=>new Set(matches),[matches]);
  const activeMatch=matches[matchIndex]??null;
  const searchTargets=useMemo(()=>searchCueTargets(deck,activeMatch,query,grouping),[deck,activeMatch,query,grouping]);
