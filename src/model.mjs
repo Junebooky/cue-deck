@@ -9,6 +9,12 @@ export function validatePackage(p) {
   const kinds=['lyric','dialogue','nar','direction','place','heading'];
   for(const s of p.scenes) if(![1,2].includes(s.act)||!str(s.label))fail('장면 정보 오류');
   for(const b of p.blocks) {if(!scenes.has(b.sceneId)||!kinds.includes(b.kind)||typeof b.text!=='string'||typeof b.actor!=='string')fail('대본 블록 오류: '+b.id);if(b.sourceCells!==undefined&&(!Array.isArray(b.sourceCells)||b.sourceCells.length<1||!b.sourceCells.every(c=>typeof c==='string')))fail('원본 표 셀 오류: '+b.id)}
+  // Source runs are optional for old packages, but may never change the original source text.
+  const validRuns=(runs,text)=>Array.isArray(runs)&&runs.every(r=>r&&typeof r.text==='string'&&['bold','red','italic'].every(k=>r[k]===undefined||typeof r[k]==='boolean'))&&runs.map(r=>r.text).join('')===text;
+  for(const b of p.blocks){
+    if(b.runs!==undefined&&!validRuns(b.runs,b.text))fail('원본 문단 서식 불일치: '+b.id);
+    if(b.cellRuns!==undefined&&(!Array.isArray(b.sourceCells)||!Array.isArray(b.cellRuns)||b.cellRuns.length!==b.sourceCells.length||!b.cellRuns.every((r,i)=>validRuns(r,b.sourceCells[i]))))fail('원본 표 서식 불일치: '+b.id);
+  }
   let last=-1;
   for(const f of p.frames){
     const i=p.blocks.findIndex(b=>b.id===f.blockId);

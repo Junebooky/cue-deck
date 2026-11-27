@@ -15,6 +15,6 @@ Connect an extended display (not mirror). Click 공연 시작, choose a display 
 ## Production package
 Import `.cuedeck.json` from Script Manager, review, then activate. Previous packages are retained in Electron userData/shows and selected version persists. Import/activation blocked during output. Sample data is invented; no actual performance script is committed. Do not commit private scripts, fonts, recordings, or packages.
 
-See [data contract](docs/package.md). Future DOCX/PDF updates should be extracted and reviewed externally, then exported as the same versioned package; no application rebuild required. Existing source IDs retained when possible; displayed cue number is derived from order. Full script includes dialogue, NAR and directions; audience frames contain only approved captions/place/black. Actual 1126 mapping, native display tests, type migration, packaging and rehearsal remain separate milestones.
+See [data contract](docs/package.md). Future DOCX/PDF updates should be extracted and reviewed externally, then exported as the same versioned package; no application rebuild required. Existing source IDs retained when possible; displayed cue number is derived from order. Full script includes dialogue, NAR and directions; audience frames contain only approved captions/place/black. Private 1126 packages may be imported; no performance text is committed. Native display tests, type migration, packaging and rehearsal remain separate milestones.
 
 `npm test`: pure model tests. `npm run build`: frontend build. CI does not test physical screens.
