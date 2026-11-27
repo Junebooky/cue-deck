@@ -10,7 +10,7 @@ export default function RehearsalNotes({r,deck,active,onJump,onClose,canStart}){
  const count=notes.reduce((s,n)=>s+n.events.length,0);
  const filter=(label,value,set,items)=><label>{label}<select aria-label={label} value={value} onChange={e=>set(e.target.value)}><option value="all">전체</option>{items.map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>;
  return <div className="rehearsal-notes">
- <p>현재 LIVE 또는 READ 위치에서 E를 누르면 자동 기록합니다. 실제 송출과 대본은 변경되지 않습니다.</p>
+ <p>현재 LIVE 또는 READ 위치에서 E를 누르면 오류가 기록되고 메모 입력창이 열립니다. 실제 송출과 대본은 변경되지 않습니다.</p>
  <div className="rehearsal-actions">{r.enabled?<button onClick={()=>r.stop()}>리허설 종료</button>:<button className="primary" disabled={!canStart||!!r.error} onClick={()=>{if(r.start(deck,active))onClose()}}>새 리허설 시작</button>}<span>{r.enabled?'● REHEARSAL ON':'공연 모드 · E 비활성'}</span></div>
  {r.error&&<p role="alert" className="import-error">{r.error}</p>}
  <div className="review-summary"><div><b>기록 위치</b>{notes.length}건</div><div><b>발생 횟수</b>{count}회</div><div><b>미해결</b>{notes.filter(n=>!n.resolved).length}건</div></div>
