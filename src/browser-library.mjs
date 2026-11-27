@@ -61,7 +61,7 @@ export async function editBrowserCue(expected,patch,previous){
   lib.versions.set(id,candidate);
   await put('versions',[...lib.versions].filter(([k])=>k!=='demo').map(([id,deck])=>({id,deck})));
  }
- return {baseId:expected,candidateId:id,...compareRevisions(base,candidate)};
+ return {snapshot:await withWidths(snapshot(lib,previous)),review:{baseId:expected,candidateId:id,...compareRevisions(base,candidate)}};
 }
 export async function compareBrowserDeck(id){
  const lib=await readLibrary();if(!lib.versions.has(id))throw new Error('대본 버전을 찾을 수 없습니다');
