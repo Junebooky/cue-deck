@@ -22,11 +22,11 @@ async function access(mode,fn){
 }
 const get=key=>access('readonly',s=>s.get(key));
 const put=(key,value)=>access('readwrite',s=>s.put(value,key));
-export async function readLibrary(){
+export async function readLibrary(includeWorking=true){
  const saved=await get('versions');
  const versions=new Map([['demo',validatePackage(demo)]]);
  for(const item of Array.isArray(saved)?saved:[]){try{if(item.id!=='demo')versions.set(item.id,validatePackage(item.deck))}catch{}}
- for(const [id,base] of versions){const working=await get('working:'+id);if(working!==undefined)versions.set(id,readWorkingDeck(base,working.current))}
+ if(includeWorking)for(const [id,base] of versions){const working=await get('working:'+id);if(working!==undefined)versions.set(id,readWorkingDeck(base,working.current))}
  const selected=await get('active');
  return {versions,active:versions.has(selected)?selected:'demo'};
 }
@@ -44,9 +44,9 @@ export async function importBrowserDeck(file,previous){
  const deck=validatePackage(JSON.parse(raw.replace(/^\uFEFF/,'')));
  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw));
  const id=Array.from(new Uint8Array(bytes),v=>v.toString(16).padStart(2,'0')).join('');
- const lib=await readLibrary();lib.versions.set(id,deck);
+ const lib=await readLibrary(false);if(!lib.versions.has(id))lib.versions.set(id,deck);
  await put('versions',[...lib.versions].filter(([k])=>k!=='demo').map(([id,deck])=>({id,deck})));
- return withWidths(snapshot(lib,previous));
+ return withWidths(snapshot(await readLibrary(),previous));
 }
 export async function editBrowserCue(expected,patch,previous){
  if(previous.active!==expected||previous.output.open)throw Error('현재 대본을 다시 확인하세요.');
