@@ -1,7 +1,7 @@
 import React,{useMemo,useState} from 'react';
 const labels={scene:'장면',block:'원본 대본',cue:'송출 큐'};
 const statusLabels={added:'추가',removed:'삭제',changed:'수정',moved:'순서 변경'};
-const kinds={lyric:'가사',dialogue:'일반 대사',nar:'NAR',direction:'무대 지시',place:'시간·장소',heading:'제목',solo:'CUE',overlap:'DUET',black:'BLACK',scene:'장면'};
+const kinds={lyric:'가사',dialogue:'드라마',nar:'NAR',direction:'무대 지시',place:'시간·장소',heading:'제목',solo:'CUE',overlap:'DUET',black:'BLACK',scene:'장면'};
 const fieldLabels={sceneId:'장면',act:'막',label:'장면명',number:'넘버',numbers:'넘버 목록',kind:'유형',actor:'화자',text:'텍스트',sourceCells:'표 셀',runs:'글자 서식',cellRuns:'표 서식',blockId:'원본 연결',trigger:'GO 신호',columns:'관객 자막 / 열',anchorContent:'원본 앵커 내용'};
 function Side({data,title}){
  return <div className="review-side"><div className="review-side-label">{title}{data?' · #'+data.position:''}</div>{!data?<p>해당 없음</p>:<><div className="review-meta">{kinds[data.kind]||data.kind} {data.actor&&'· '+data.actor}</div>{data.cells?<div className="review-cells" style={{gridTemplateColumns:'repeat('+data.cells.length+', minmax(0,1fr))'}}>{data.cells.map((c,i)=><span key={i}>{c||'빈 칸'}</span>)}</div>:data.columns?.length?<div className="review-cells" style={{gridTemplateColumns:'repeat('+data.columns.length+', minmax(0,1fr))'}}>{data.columns.map((c,i)=><div key={i}><small>{c.actor}</small>{c.lines.map((line,r)=><div key={r}>{line||'\u00a0'}</div>)}</div>)}</div>:<div className="review-text">{data.text||'검정 화면'}</div>}{data.trigger&&<div className="review-detail">GO: {data.trigger}</div>}{data.anchor&&<div className="review-detail">원본: {data.anchor.actor} · {data.anchor.text}</div>}{data.number&&<div className="review-detail">넘버: {Array.isArray(data.number)?data.number.join(' / '):data.number}</div>}</>}</div>

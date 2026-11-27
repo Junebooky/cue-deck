@@ -1,9 +1,7 @@
-// All lyric cells share a font size. The short-line ceiling is deliberately larger
-// than the audience's proportional typography; this is a reading aid only.
+// Scale consistently with the 16:9 canvas; a modest readability uplift over the audience's 4.6% / 3.5%.
 export function monitorFontBounds(width,height,columns,variant){
- const program=variant==='program';
- const widthFactor=columns>1?(program?.071:.065):(program?.093:.084);
- return {min:6,max:Math.max(6,Math.floor(Math.min(program?38:34,width*widthFactor,height*.19)*2)/2)};
+ const widthFactor=columns>1?.043:.057;
+ return {min:6,max:Math.max(6,Math.floor(Math.min(width*widthFactor,height*.105)*2)/2)};
 }
 export function fitMonitorFont({min,max},fits){
  // Search at half-pixel steps. Do not leave the size at the last failed probe.

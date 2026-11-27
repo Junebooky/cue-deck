@@ -30,3 +30,6 @@ Import the new private JSON while off-air. Compare it with the active version. S
 
 ## Console readability
 PROGRAM/PREVIEW use an independent operator-only caption renderer with larger short-line font sizes and measured fitting after resize/font load. All simultaneous lyric rows share one fitted size. The physical audience renderer is unchanged. PROGRAM frame uses the red label color; PREVIEW uses the blue label color. Source cards have stronger current-cue elevation and a subtler next-cue border beam. Reduced-motion settings disable beam animation. These are visual indicators of the selected cue, not proof of physical output.
+
+## Extended display troubleshooting
+Use the Electron app, not browser rehearsal. Display selection shows coordinates and excludes the operator's actual display, even if it is not primary. On macOS the audience uses simple fullscreen to avoid native Spaces transitions; other platforms use native fullscreen. Startup checks actual selected-display geometry, renderer ACK, retries and timeouts. After connection, the audience is intentionally black until GO. Use 화면 테스트 to show an explicit diagnostic pattern and 테스트 종료 · BLACK to return to black. GO/PREV are blocked during testing. Physical HDMI/three-monitor testing is still required; the automated display tests cover geometry and selection policy, not actual hardware.

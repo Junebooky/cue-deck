@@ -56,3 +56,13 @@
 }
 .console .block.active-hit{outline:1px dashed #e1bc75;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.console .block.live::before,.console .block.next::before{animation:none}}
+
+/* Match the miniature 16:9 monitor rather than enlarging short captions to headline size. */
+.console .operator-caption .caption-grid{width:92%;font-weight:600;line-height:1.3;gap:.35em .8em}
+.console .operator-caption .caption-actor{font-size:.55em;margin-bottom:.35em}
+.console .block.place{padding-bottom:14px;text-align:center}
+.console .block.place .block-meta{text-align:left}
+.console .place-card-icon{display:flex;justify-content:center;margin:2px 0 6px;color:#a1e2bf;pointer-events:none}
+.console .place-pin{width:30px;height:30px;filter:drop-shadow(0 0 6px #a1e2bf24)}
+.console .block.place .block-text{text-align:center}
+.output-test-button{font-size:11px;padding:4px 8px}.output-failure{padding:7px 10px;color:#f3c9a1;background:#372e26;border:1px solid #755e43;border-radius:4px;font-size:12px}.display-option.unavailable{opacity:.55;cursor:not-allowed}

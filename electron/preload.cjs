@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('deckAPI',{
   displays:()=>ipcRenderer.invoke('deck:displays'),
   start:(id)=>ipcRenderer.invoke('deck:start',id),
   stop:()=>ipcRenderer.invoke('deck:stop'),
+  testOutput:(enabled)=>ipcRenderer.invoke('deck:test-output',enabled),
   importDeck:()=>ipcRenderer.invoke('deck:import'),
   compare:(id)=>ipcRenderer.invoke('deck:compare',id),
   activate:(id,options)=>ipcRenderer.invoke('deck:activate',id,options),

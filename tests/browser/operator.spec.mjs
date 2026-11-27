@@ -47,7 +47,7 @@ test('invalid JSON import leaves active revision intact',async({page})=>{
 });
 test('cue kind remains visible when next or live, and program lamp animates only in operator view',async({page})=>{
  await page.goto('/');await expect(page.locator('.program-lamp')).toHaveCSS('animation-name','program-pulse');await expect(page.getByRole('button',{name:'큐 001 미리보기'})).toContainText('PLACE');await expect(page.getByRole('button',{name:'큐 001 미리보기'})).toContainText('NEXT');
- await go(page).click();await expect(page.getByRole('button',{name:'큐 002 미리보기'})).toContainText('BLACK');await expect(page.getByRole('button',{name:'큐 002 미리보기'})).toContainText('NEXT');await expect(page.locator('.block.dialogue .block-kind').first()).toHaveText('일반 대사');
+ await go(page).click();await expect(page.getByRole('button',{name:'큐 002 미리보기'})).toContainText('BLACK');await expect(page.getByRole('button',{name:'큐 002 미리보기'})).toContainText('NEXT');await expect(page.locator('.block.dialogue .block-kind').first()).toHaveText('드라마');
  await page.goto('/?mode=audience');await expect(page.locator('.program-lamp')).toHaveCount(0);
 });
 
@@ -62,7 +62,7 @@ test('operator captions are readable, independently colored, and source cards ha
  await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
  await go(page).click();const program=page.locator('.program-frame'),preview=page.locator('.preview-frame');
  await expect(program).toHaveCSS('border-top-color','rgb(219, 155, 155)');await expect(preview).toHaveCSS('border-top-color','rgb(170, 195, 246)');
- await expect.poll(()=>program.locator('.caption-grid').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(22);
+ await expect.poll(()=>program.locator('.caption-grid').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(15);
  await expect(page.locator('.block.live')).toHaveCount(1);await expect(page.locator('.block.next')).toHaveCount(1);
  const live=page.locator('.block.live'),next=page.locator('.block.next');
  expect(await live.evaluate(e=>getComputedStyle(e,'::before').animationName)).toBe('cue-border-beam');
@@ -70,7 +70,7 @@ test('operator captions are readable, independently colored, and source cards ha
  expect(parseFloat(await live.evaluate(e=>getComputedStyle(e).paddingTop))).toBeGreaterThan(parseFloat(await next.evaluate(e=>getComputedStyle(e).paddingTop)));
  await go(page).click();await expect(program.locator('.caption-cell')).toHaveCount(0);await go(page).click();await expect(program.locator('.caption-cell')).toHaveCount(2);
  await expect(preview.locator('.caption-cell')).toHaveCount(4);
- await expect.poll(()=>preview.locator('.caption-grid').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(16);
+ await expect.poll(()=>preview.locator('.caption-grid').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(11);
  await page.emulateMedia({reducedMotion:'reduce'});expect(await page.locator('.block.live').evaluate(e=>getComputedStyle(e,'::before').animationName)).toBe('none');
  await page.goto('/?mode=audience');await expect(page.locator('.audience-caption')).toBeVisible();await expect(page.locator('.operator-caption')).toHaveCount(0);
 });
@@ -82,3 +82,5 @@ test('long operator lines fit after narrowing the monitor, all overlap rows shar
  const fit=()=>page.locator('.preview-frame').evaluate(root=>{const body=root.querySelector('.caption-grid'),cells=[...body.querySelectorAll('.caption-cell')];return {fits:body.getBoundingClientRect().height<=root.clientHeight-18&&cells.every(c=>c.scrollWidth<=c.clientWidth+1),sizes:new Set(cells.map(c=>getComputedStyle(c).fontSize)).size}});
  await expect.poll(fit).toEqual({fits:true,sizes:1});
 });
+
+test('place cards have centered pin and operator monitor uses moderate proportional font',async({page})=>{await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await expect(page.locator('.block.place .place-pin')).toHaveCount(3);await expect(page.locator('.block.dialogue .block-kind').first()).toHaveText('드라마');await go(page).click();const p=page.locator('.program-frame');await expect.poll(()=>p.locator('.caption-grid').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(15);await expect.poll(()=>p.locator('.caption-grid').evaluate(e=>parseFloat(getComputedStyle(e).fontSize)/e.closest('.operator-caption').clientWidth)).toBeLessThanOrEqual(.058);await page.goto('/?mode=audience');await expect(page.locator('.place-pin')).toHaveCount(0)});

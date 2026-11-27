@@ -12,7 +12,7 @@ export default function OperatorCaption({view,variant='preview'}){
   const fit=()=>{
    if(disposed||!root.clientWidth||!root.clientHeight)return;
    const bounds=monitorFontBounds(root.clientWidth,root.clientHeight,n,variant);
-   const availableHeight=root.clientHeight-20;
+   const availableHeight=root.clientHeight*.86;
    const measure=px=>{
     body.style.setProperty('--caption-size',px+'px');
     // Compare actual cells with their own available space, not rounded 92% of the parent.
