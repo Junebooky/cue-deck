@@ -41,7 +41,9 @@ function matchesFrame(frame,blocks){
  if(frame.kind==='overlap'){
   const n=frame.columns.length;
   if(blocks.some(b=>!Array.isArray(b.sourceCells)||b.sourceCells.length!==n))return false;
-  return frame.columns.every((c,i)=>canon(c.lines.join('\n'))===canon(blocks.map(b=>b.sourceCells[i]).join('\n')));
+  const rows=lines=>lines.flatMap(line=>line.replace(/\r\n/g,'\n').split('\n')).map(canon);
+  // Preserve empty rows, rather than accepting a shifted simultaneous vocal.
+  return frame.columns.every((c,i)=>JSON.stringify(rows(c.lines))===JSON.stringify(rows(blocks.map(b=>b.sourceCells[i]))));
  }
  return false;
 }

@@ -21,3 +21,9 @@ test('legacy overlap matches aligned original table columns including blank lane
  d.blocks.splice(5,0,{...d.blocks[4],id:'overlap-second',text:'서로의 손을 잡고\t',sourceCells:['서로의 손을 잡고','']});
  assert.deepEqual(buildCueGroups(validatePackage(d)).ranges.get(3),['b5','overlap-second']);
 });
+
+test('legacy overlap rejects a shifted blank row even if concatenated text matches',()=>{
+ const d=structuredClone(demo);d.blocks[4].text='저 멀리 빛나는 길\t';d.blocks[4].sourceCells=['저 멀리 빛나는 길',''];
+ d.blocks.splice(5,0,{...d.blocks[4],id:'shifted-row',text:'서로의 손을 잡고\t나도 함께',sourceCells:['서로의 손을 잡고','나도 함께']});
+ assert.deepEqual(buildCueGroups(validatePackage(d)).ranges.get(3),['b5']);
+});
