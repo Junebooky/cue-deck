@@ -50,3 +50,10 @@ test('cue kind remains visible when next or live, and program lamp animates only
  await go(page).click();await expect(page.getByRole('button',{name:'큐 002 미리보기'})).toContainText('BLACK');await expect(page.getByRole('button',{name:'큐 002 미리보기'})).toContainText('NEXT');await expect(page.locator('.block.dialogue .block-kind').first()).toHaveText('일반 대사');
  await page.goto('/?mode=audience');await expect(page.locator('.program-lamp')).toHaveCount(0);
 });
+
+test('same production update requires review and keeps old version until confirmed',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const revised=structuredClone(demo);revised.title='수정된 연습 대본';revised.revision='demo-2';revised.blocks[3].text='변경된 가사';revised.frames[2].columns[0].lines[0]='변경된 가사';revised.frames[2].trigger='변경된 가사';
+ await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();await page.getByLabel('공연 데이터 파일').setInputFiles({name:'new.cuedeck.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(revised))});
+ const version=page.locator('.version').filter({hasText:'수정된 연습 대본'});await version.getByRole('button',{name:'활성화'}).click();await expect(page.getByRole('dialog')).toContainText('SCRIPT REVISION REVIEW');await expect(page.locator('.review-list')).toContainText('변경된 가사');await expect(page.getByRole('button',{name:'검토 후 활성화'})).toBeDisabled();await expect(page.locator('.brand')).not.toContainText('수정된 연습 대본');
+ await page.getByRole('checkbox',{name:'변경 사항 및 원본 연결을 검토했습니다.'}).check();await page.getByRole('button',{name:'검토 후 활성화'}).click();await expect(page.locator('.brand')).toContainText('수정된 연습 대본');await expect(page.locator('.version').filter({hasText:'수정된 연습 대본'}).getByRole('button',{name:'사용 중'})).toBeDisabled();
+});

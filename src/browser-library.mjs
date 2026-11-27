@@ -1,5 +1,6 @@
 import {validatePackage,initialPlayback} from './model.mjs';
 import {demo} from './demo.mjs';
+import {compareRevisions,assertActivation} from './revision-review.mjs';
 // Browser rehearsal storage is independent of the Electron production library.
 const openDB=()=>new Promise((resolve,reject)=>{
  const req=indexedDB.open('cue-deck-rehearsal-v1',1);
@@ -41,7 +42,11 @@ export async function importBrowserDeck(file,previous){
  await put('versions',[...lib.versions].filter(([k])=>k!=='demo').map(([id,deck])=>({id,deck})));
  return snapshot(lib,previous);
 }
-export async function activateBrowserDeck(id,previous){
+export async function compareBrowserDeck(id){
  const lib=await readLibrary();if(!lib.versions.has(id))throw new Error('대본 버전을 찾을 수 없습니다');
+ return {baseId:lib.active,candidateId:id,...compareRevisions(lib.versions.get(lib.active),lib.versions.get(id))};
+}
+export async function activateBrowserDeck(id,previous,options){
+ const lib=await readLibrary();assertActivation(lib.active,lib.versions.get(lib.active),id,lib.versions.get(id),options);
  await put('active',id);lib.active=id;return snapshot(lib,previous,true);
 }
