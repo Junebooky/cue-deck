@@ -45,6 +45,16 @@ export function undoMark(log,sessionId){
 export function editNote(log,id,patch){
  return {...log,notes:log.notes.map(n=>n.id!==id?n:{...n,...Object.fromEntries(['memo','actual','detail','resolved'].filter(k=>Object.hasOwn(patch,k)).map(k=>[k,k==='resolved'?patch[k]===true:String(patch[k]).slice(0,10000)]))})};
 }
+// Append a new observation without overwriting earlier notes at the same cue.
+export function appendNoteMemo(log,id,value){
+ const note=log.notes.find(n=>n.id===id);
+ if(!note)throw Error('해당 오류 기록을 찾을 수 없습니다.');
+ const entry=String(value??'').trim();
+ if(!entry)return log;
+ const memo=[note.memo,entry].filter(Boolean).join('\n');
+ if(memo.length>10000)throw Error('메모는 최대 10,000자까지 저장할 수 있습니다.');
+ return editNote(log,id,{memo});
+}
 export function repeatCount(log,note){
  return log.notes.filter(n=>n.productionId===note.productionId&&n.active===note.active&&n.key===note.key).reduce((sum,n)=>sum+n.events.length,0);
 }
