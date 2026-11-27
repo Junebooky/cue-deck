@@ -30,3 +30,23 @@ test('panel resizing, follow and reader size persist across reload',async({page}
  await page.getByRole('button',{name:'FOLLOW ON'}).click();await page.getByRole('button',{name:'대본 글자 크게'}).click();
  await page.reload();await expect(page.getByRole('button',{name:'FOLLOW OFF'})).toBeVisible();await expect(page.locator('.script-scroll')).toHaveCSS('font-size','18px');await expect(splitter).toHaveAttribute('aria-valuenow','212');
 });
+
+test('browser rehearsal imports, activates and restores a local JSON revision',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const imported={...demo,productionId:'fixture-local',title:'로컬 대본 테스트',revision:'test-import'};
+ await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();
+ const importButton=page.getByRole('button',{name:'공연 데이터 JSON 불러오기'});await expect(importButton).toBeEnabled();
+ await page.getByLabel('공연 데이터 파일').setInputFiles({name:'local.cuedeck.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(imported))});
+ const version=page.locator('.version').filter({hasText:'로컬 대본 테스트'});await expect(version).toBeVisible();await version.getByRole('button',{name:'활성화'}).click();
+ await expect(version.getByRole('button',{name:'사용 중'})).toBeDisabled();await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await expect(page.locator('.brand')).toContainText('로컬 대본 테스트');await page.reload();await expect(page.locator('.brand')).toContainText('로컬 대본 테스트');await expect(page.locator('.live-label')).toContainText('— / 9');
+});
+test('invalid JSON import leaves active revision intact',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();
+ await page.getByLabel('공연 데이터 파일').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{"schemaVersion":1}')});
+ await expect(page.locator('.import-error')).toContainText('잘못된 공연 데이터 형식');await expect(page.locator('.version')).toHaveCount(1);
+});
+test('cue kind remains visible when next or live, and program lamp animates only in operator view',async({page})=>{
+ await page.goto('/');await expect(page.locator('.program-lamp')).toHaveCSS('animation-name','program-pulse');await expect(page.getByRole('button',{name:'큐 001 미리보기'})).toContainText('PLACE');await expect(page.getByRole('button',{name:'큐 001 미리보기'})).toContainText('NEXT');
+ await go(page).click();await expect(page.getByRole('button',{name:'큐 002 미리보기'})).toContainText('BLACK');await expect(page.getByRole('button',{name:'큐 002 미리보기'})).toContainText('NEXT');await expect(page.locator('.block.dialogue .block-kind').first()).toHaveText('일반 대사');
+ await page.goto('/?mode=audience');await expect(page.locator('.program-lamp')).toHaveCount(0);
+});
