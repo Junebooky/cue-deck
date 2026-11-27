@@ -6,7 +6,7 @@ import {moveBoundary} from './caption-widths.mjs';
 export default function OperatorCaption({view,variant='preview',scale=DEFAULT_SCALE,exact=false,font=DEFAULT_FONT,ratios=null,onRatios=null}){
  const ref=useRef(null),content=useRef(null);
  const n=view.columns.length,rows=view.columns[0]?.lines.length||0;
- const fit=useCaptionFit(ref,content,view,scale,!exact,font,ratios);
+ const fit=useCaptionFit(ref,content,view,scale,!exact&&n<2,font,ratios);
  const drag=useRef(null);
  const boundary=(e,i)=>{const body=content.current?.getBoundingClientRect();if(!body||!body.width)return;onRatios?.(moveBoundary(drag.current?.ratios??fit.ratios,i,(e.clientX-body.left)/body.width*100))};
  return <div className="operator-caption-wrap"><div ref={ref} className={'caption monitor-caption operator-caption '+variant+'-frame'} data-kind={view.kind} data-scale={scale} data-font={font} data-ratios={fit.ratios.join(':')} data-wrap={fit.wrapped} style={{fontFamily:captionFamily(font)}}>

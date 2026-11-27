@@ -207,3 +207,12 @@ test('overlap widths AUTO, manual preview edit, GO and persisted review',async({
  await expect(preview).toHaveAttribute('data-ratios','70:30');await expect(program).toHaveAttribute('data-ratios',before);await expect(page.locator('.live-label')).toContainText('003 / 9');await go(page).click();await expect(program).toHaveAttribute('data-ratios','70:30');await expect(program.locator('.caption-cell')).toHaveCount(4);
  await page.reload();await page.getByRole('button',{name:'동시 가창 검수'}).click();await expect(page.getByRole('dialog').locator('.preview-frame')).toHaveAttribute('data-ratios','70:30');await page.getByRole('button',{name:'AUTO 복원'}).click();await page.getByRole('button',{name:'큐 너비 저장'}).click();await expect(page.getByRole('button',{name:'큐 너비 저장'})).toBeDisabled();await expect(page.getByRole('dialog').locator('.width-editor-title')).toContainText('AUTO');
 });
+
+test('audience renderer and operator use identical adaptive ratios, preserve blank lane, and expose no edit controls',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const view=structuredClone(demo.frames[3]);view.columns[0].lines=['가나다라마바사 아자차카타파하 가나다라마바사','여러 사람이 함께 부르는 긴 가사'];view.columns[1].lines=['아아',''];
+ await page.addInitScript(view=>{window.deckAPI={outputState:async()=>({sequence:1,view,captionScale:100,captionFont:'pretendard',ratios:[70,30]}),onOutput:()=>()=>{},ack:()=>{}}},view);
+ await page.goto('/?mode=audience');const audience=page.locator('.audience-caption');await expect(audience).toHaveAttribute('data-ratios','70:30');await expect(audience.locator('.caption-cell')).toHaveCount(4);await expect(audience.locator('.caption-cell').last()).toHaveText('');
+ await expect(page.locator('.caption-boundary')).toHaveCount(0);await expect(page.getByRole('slider')).toHaveCount(0);
+ const cols=await audience.locator('.caption-grid').evaluate(el=>{const cs=getComputedStyle(el);return {widths:cs.gridTemplateColumns.split(' ').map(parseFloat),sizes:new Set([...el.querySelectorAll('.caption-cell')].map(c=>getComputedStyle(c).fontSize)).size}});
+ expect(cols.widths[0]/cols.widths[1]).toBeCloseTo(70/30,1);expect(cols.sizes).toBe(1);
+});

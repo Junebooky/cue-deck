@@ -30,9 +30,9 @@ function CueLabel({kind,status}){return <><span className="cue-kind-text">{cueKi
 
 function Caption({view,large=false,scale=DEFAULT_SCALE,font=DEFAULT_FONT,ratios=null}){
  const ref=useRef(null),content=useRef(null);
- useCaptionFit(ref,content,view,scale,false,font,ratios);
+ const fit=useCaptionFit(ref,content,view,scale,false,font,ratios);
  const n=view.columns.length,rows=view.columns[0]?.lines.length||0;
- return <div ref={ref} className={'caption '+(large?'audience-caption':'monitor-caption')} data-font={font} style={{fontFamily:captionFamily(font)}}><div ref={content} className="caption-grid" style={{gridTemplateColumns:'repeat('+Math.max(n,1)+', minmax(0,1fr))'}}>
+ return <div ref={ref} className={'caption '+(large?'audience-caption':'monitor-caption')} data-font={font} data-ratios={fit.ratios.join(':')} data-wrap={fit.wrapped} style={{fontFamily:captionFamily(font)}}><div ref={content} className="caption-grid" style={{gridTemplateColumns:'repeat('+Math.max(n,1)+', minmax(0,1fr))'}}>
  {n>1&&view.columns.map((c,i)=><div key={'h'+i} className="caption-actor">{c.actor}</div>)}
  {Array.from({length:rows},(_,r)=>view.columns.map((c,i)=><div className="caption-cell" key={r+':'+i}>{c.lines[r]||'\u00a0'}</div>))}
  </div></div>
