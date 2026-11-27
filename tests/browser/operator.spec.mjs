@@ -175,3 +175,10 @@ test('speaker prefix stays in header only; source lyric formatting and audience 
  await expect(page.locator('#block-b4 .actor-label')).toHaveText('배우 A');await expect(page.locator('#block-b4 .block-text')).toHaveText('새로운 하루를 열어');await expect(page.locator('#block-b4 .source-bold')).toHaveText('새로운 하루를 열어');
  await go(page).click();await go(page).click();await go(page).click();await expect(page.locator('.cue-group.live .block-text')).toHaveText(['새로운 하루를 열어','우리의 길을 찾아가']);await expect(page.locator('.program-frame .caption-cell')).toHaveText(['새로운 하루를 열어','우리의 길을 찾아가']);
 });
+
+test('A minus reaches 9px dense reader, reduces card height, persists and leaves audience size unchanged',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();
+ const card=page.locator('#block-b4');const height=await card.evaluate(e=>e.getBoundingClientRect().height);const program=page.locator('.program-frame .caption-grid');const captionSize=await program.evaluate(e=>getComputedStyle(e).fontSize);
+ const minus=page.getByRole('button',{name:'대본 글자 작게'});for(let i=0;i<8;i++)await minus.click();await expect(minus).toBeDisabled();await expect(page.locator('.script-scroll')).toHaveCSS('font-size','9px');await expect(page.locator('.script-scroll')).toHaveClass(/reader-dense/);expect(await card.evaluate(e=>e.getBoundingClientRect().height)).toBeLessThan(height);await expect(program).toHaveCSS('font-size',captionSize);
+ await page.reload();await expect(page.locator('.script-scroll')).toHaveCSS('font-size','9px');await page.getByRole('button',{name:'대본 글자 크기 초기화'}).click();await expect(page.locator('.script-scroll')).toHaveCSS('font-size','17px');await expect(page.locator('.script-scroll')).not.toHaveClass(/reader-dense/);
+});

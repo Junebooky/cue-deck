@@ -1,9 +1,10 @@
 // Navigation is read-only: no playback commands or audience state here.
+export const MIN_READER_FONT=9,MAX_READER_FONT=28;
 export const defaultPrefs={sceneOpen:true,sceneWidth:200,monitorWidth:390,fontSize:17,follow:true};
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 export function cleanPrefs(p={}){
  const n=(x,d,min,max)=>typeof x==='number'&&Number.isFinite(x)?clamp(x,min,max):d;
- return {sceneOpen:p?.sceneOpen!==false,sceneWidth:n(p?.sceneWidth,200,150,340),monitorWidth:n(p?.monitorWidth,390,260,600),fontSize:n(p?.fontSize,17,13,28),follow:p?.follow!==false};
+ return {sceneOpen:p?.sceneOpen!==false,sceneWidth:n(p?.sceneWidth,200,150,340),monitorWidth:n(p?.monitorWidth,390,260,600),fontSize:n(p?.fontSize,17,MIN_READER_FONT,MAX_READER_FONT),follow:p?.follow!==false};
 }
 export function fitLayout(width,prefs){
  const p=cleanPrefs(prefs),available=Math.max(0,width),split=p.sceneOpen?20:10,centerMin=320;
