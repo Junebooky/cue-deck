@@ -1,5 +1,7 @@
 import {validatePackage,initialPlayback} from './model.mjs';
-import {editCueRevision,readWorkingDeck,assertEditBase} from './cue-editor.mjs';
+import {applyShowEdit,showEditLabel,readWorkingDeck,assertEditBase} from './cue-editor.mjs';
+import {readHistory,recordShowChange} from './show-history.mjs';
+import {validateNumberTitles} from './number-search.mjs';
 import {demo} from './demo.mjs';
 import {readSettings} from './caption-style.mjs';
 import {readPerformance,withPerformance} from './performance-data.mjs';
@@ -43,7 +45,7 @@ export async function importBrowserDeck(file,previous){
  if(!file)return previous;
  if(file.size>20*1024*1024)throw new Error('20MB 초과');
  const raw=await file.text();
- const deck=validatePackage(JSON.parse(raw.replace(/^\uFEFF/,'')));readPerformance(deck);
+ const deck=validatePackage(JSON.parse(raw.replace(/^\uFEFF/,'')));readPerformance(deck);readHistory(deck);validateNumberTitles(deck);
  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw));
  const id=Array.from(new Uint8Array(bytes),v=>v.toString(16).padStart(2,'0')).join('');
  const lib=await readLibrary(false);if(!lib.versions.has(id))lib.versions.set(id,deck);
@@ -73,7 +75,8 @@ async function saveWorking(expected,previous,style,widths,patch=null){
    if(JSON.stringify(current.performanceSettings)!==JSON.stringify(previous.deck.performanceSettings))throw Error('공연 설정이 이미 수정되었습니다. 다시 열어 주세요.');
    if(patch)assertEditBase(current,patch);
    const old=readPerformance(current),oldStyle=old?.captionSettings??readSettings(previous.captionSettings,previous.captionFont,previous.captionScale),oldWidths=old?.captionWidths??previous.captionWidths??{};
-   candidate=withPerformance(patch?editCueRevision(current,patch):current,style??oldStyle,widths??oldWidths);
+   const before=withPerformance(current,oldStyle,oldWidths),draft=patch?applyShowEdit(before,patch):withPerformance(before,style??oldStyle,widths??oldWidths);
+   candidate=['undo','redo'].includes(patch?.action)?draft:recordShowChange(before,draft,patch?showEditLabel(before,patch):style?'자막 스타일':'열 너비');
    if(new TextEncoder().encode(JSON.stringify(candidate)).length>20*1024*1024)throw Error('20MB 초과');
    store.put({current:candidate,previous:withPerformance(current,oldStyle,oldWidths)},'working:'+active);
   }catch(e){error=e;tx.abort()}};
@@ -84,7 +87,7 @@ async function saveWorking(expected,previous,style,widths,patch=null){
  })}finally{db.close()}
  const currentId=previous.deck.frames[previous.state.index]?.id;
  const index=currentId?candidate.frames.findIndex(f=>f.id===currentId):-1;
- return {...previous,revision:previous.revision+1,deck:candidate,captionSettings:candidate.performanceSettings.captionSettings,captionWidths:candidate.performanceSettings.captionWidths,
+ return {...previous,revision:previous.revision+1,deck:candidate,versions:previous.versions.map(v=>v.id===expected?{...v,count:candidate.frames.length}:v),captionSettings:candidate.performanceSettings.captionSettings,captionWidths:candidate.performanceSettings.captionWidths,
   state:patch?{...previous.state,index,blackout:previous.state.blackout||index<0,sequence:previous.state.sequence+1}:previous.state};
 }
 export async function compareBrowserDeck(id){

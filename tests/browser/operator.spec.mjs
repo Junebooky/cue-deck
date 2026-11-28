@@ -392,3 +392,16 @@ test('delete inactive version with confirmation, active and demo protected, pers
  await b.getByRole('button',{name:/삭제$/}).click();await confirm.getByRole('button',{name:'버전 삭제',exact:true}).click();await expect(b).toHaveCount(0);await expect(a).toBeVisible();
  await page.reload();await page.getByRole('button',{name:'대본 관리'}).click();await expect(b).toHaveCount(0);await expect(a.getByRole('button',{name:'사용 중'})).toBeDisabled();
 });
+
+test('history undo redo, title rename, delete and add persist in same slot',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
+ await page.locator('#block-b4').getByRole('button',{name:'큐 003 수정'}).click();const editor=page.getByRole('dialog',{name:'자막 편집'});
+ await editor.getByRole('button',{name:'큐 삭제',exact:true}).click();await page.getByRole('dialog',{name:'큐 삭제 확인'}).getByRole('button',{name:'큐 삭제',exact:true}).click();
+ await expect(page.locator('.live-label')).toContainText('/ 8');
+ await page.getByRole('button',{name:'대본 관리'}).click();await page.getByRole('button',{name:'수정 이력 · Undo / Redo'}).click();const h=page.getByRole('dialog',{name:'수정 이력'});
+ await h.getByRole('button',{name:'↶ 실행 취소'}).click();await expect(page.locator('.live-label')).toContainText('/ 9');await h.getByRole('button',{name:'↷ 다시 실행'}).click();await expect(page.locator('.live-label')).toContainText('/ 8');await h.getByRole('button',{name:'닫기'}).click();
+ await page.getByRole('button',{name:'큐 추가 b4',exact:true}).click();const add=page.getByRole('dialog',{name:'큐 추가'});await add.getByRole('textbox',{name:'추가 가사'}).fill('신규 가사');await add.getByRole('button',{name:'큐 추가 저장'}).click();await expect(add).toHaveCount(0);await expect(page.locator('.live-label')).toContainText('/ 9');
+ await page.getByRole('button',{name:'대본 관리'}).click();await page.getByRole('button',{name:'넘버 제목 편집',exact:true}).click();const titles=page.getByRole('dialog',{name:'넘버 제목 편집'});await titles.getByRole('textbox',{name:'M01 제목'}).fill('새 넘버');await titles.getByRole('button',{name:'저장',exact:true}).first().click();await expect(titles.getByText('원제 복원')).toBeVisible();
+ await page.reload();await expect(page.locator('.edited-cue-caption')).toContainText('신규 가사');await page.getByRole('button',{name:'넘버 검색',exact:true}).click();await expect(page.getByRole('dialog',{name:'넘버 검색'})).toContainText('M01. 새 넘버');await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await page.getByRole('button',{name:'대본 관리'}).click();await page.getByRole('button',{name:'수정 이력 · Undo / Redo'}).click();await expect(h).toContainText('큐 추가');await expect(h).toContainText('넘버 제목');
+});

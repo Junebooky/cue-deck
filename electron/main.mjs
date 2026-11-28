@@ -5,7 +5,9 @@ import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {validatePackage,initialPlayback,playback,viewFor} from '../src/model.mjs';
 import {demo} from '../src/demo.mjs';
-import {editCueRevision,readWorkingDeck,assertEditBase} from '../src/cue-editor.mjs';
+import {applyShowEdit,showEditLabel,readWorkingDeck} from '../src/cue-editor.mjs';
+import {readHistory,recordShowChange} from '../src/show-history.mjs';
+import {validateNumberTitles} from '../src/number-search.mjs';
 import {compareRevisions,assertActivation} from '../src/revision-review.mjs';
 import {describeDisplays,selectOutputDisplay,coversDisplay,testView} from '../src/display-policy.mjs';
 import {validScale,readScale,advanceStyleSequence} from '../src/caption-scale.mjs';
@@ -35,9 +37,10 @@ const backupPath=id=>path.join(dataDir(),id+'.backup.json');
 const workingErrors=new Map();
 async function atomicJson(file,value){const tmp=file+'.tmp';await writeFile(tmp,JSON.stringify(value,null,2),'utf8');await rename(tmp,file)}
 async function readWorking(id,base){try{return readWorkingDeck(base,JSON.parse(await readFile(workingPath(id),'utf8')))}catch(e){if(e.code==='ENOENT')return base;workingErrors.set(id,e.message);return base}}
-async function persistWorking(candidate,style=settings(),widths=captionWidths){
+async function persistWorking(candidate,style=settings(),widths=captionWidths,label='자막 설정 변경',restoring=false){
  assertWorking(active);if(styleLoadError||widthLoadError)throw Error('기존 자막 설정을 확인하세요.');
- const previous=withPerformance(deck,settings(),captionWidths),next=withPerformance(candidate,style,widths);
+ const previous=withPerformance(deck,settings(),captionWidths),draft=withPerformance(candidate,style,widths);
+ const next=restoring?draft:recordShowChange(previous,draft,label);
  if(Buffer.byteLength(JSON.stringify(next,null,2))>20*1024*1024)throw Error('20MB 초과');
  await atomicJson(backupPath(active),previous);await atomicJson(workingPath(active),next);
  deck=next;versions.set(active,next);captionSettings=next.performanceSettings.captionSettings;captionWidths=next.performanceSettings.captionWidths;
@@ -129,29 +132,29 @@ function register(){
   if(active!==expected||changingDeck||scaleChanging||widthChanging||(audience&&!ready))throw Error('대본 또는 송출 준비 상태를 확인하세요.');
   const updated=editSettings(settings(),deck,index,value,outputActive(),state.index);
   scaleChanging=true;
-  try{await persistWorking(deck,updated);if(index===null){state=advanceStyleSequence(state);sendOutput()}notify();return snapshot()}finally{scaleChanging=false}
+  try{await persistWorking(deck,updated,captionWidths,index===null?'전체 자막 스타일':'CUE '+String(index+1).padStart(3,'0')+' · 개별 스타일');if(index===null){state=advanceStyleSequence(state);sendOutput()}notify();return snapshot()}finally{scaleChanging=false}
  });
  ipcMain.handle('deck:caption-widths',async(e,expected,index,value)=>{
   requireOperator(e);if(widthLoadError)throw Error(widthLoadError);if(changingDeck||scaleChanging||widthChanging)throw Error('다른 설정 작업 중입니다.');
   const frame=assertWidthEdit(deck,active,expected,index,value,outputActive(),state.index);
   widthChanging=true;
-  try{const next=updateWidths(captionWidths,frame,value);await persistWorking(deck,settings(),next);notify();return snapshot()}finally{widthChanging=false}
+  try{const next=updateWidths(captionWidths,frame,value);await persistWorking(deck,settings(),next,'CUE '+String(index+1).padStart(3,'0')+' · 열 너비');notify();return snapshot()}finally{widthChanging=false}
  });
  ipcMain.handle('deck:test-output',(e,enabled)=>{requireOperator(e);if(!audience||!started||!ready)throw new Error('관객 화면 연결 확인 후 테스트하세요');testing=enabled===true;state=playback(state,{type:'BLACK'},deck.frames.length);sendOutput();notify();return snapshot()});
  ipcMain.handle('deck:command',(e,action)=>{requireOperator(e);if(!action||!['GO','PREV','BLACK','RESTORE'].includes(action.type))throw new Error('지원하지 않는 명령');if(action.type!=='BLACK')assertWorking(active);if((changingDeck||widthChanging||scaleChanging)&&action.type!=='BLACK')throw Error('열 너비 저장 중입니다.');if(testing&&action.type!=='BLACK')throw new Error('화면 테스트를 종료한 후 송출하세요');if(action.type!=='BLACK'&&audience&&!ready)throw new Error('관객 화면 준비 확인 대기');if(action.type==='BLACK')testing=false;state=playback(state,action,deck.frames.length);sendOutput();notify();return snapshot()});
- ipcMain.handle('deck:import',async e=>{requireOperator(e);if(outputActive()||changingDeck)throw new Error('공연 종료 및 기존 작업 완료 후 대본을 불러오세요');changingDeck=true;try{const res=await dialog.showOpenDialog(operator,{properties:['openFile'],filters:[{name:'Cue Deck JSON',extensions:['json']}]});if(res.canceled)return snapshot();const file=res.filePaths[0];if((await stat(file)).size>20*1024*1024)throw new Error('20MB 초과');const raw=await readFile(file,'utf8');const parsed=validatePackage(JSON.parse(raw));readPerformance(parsed);if(outputActive())throw new Error('공연 중에는 대본 변경 불가');const id=createHash('sha256').update(raw).digest('hex');await writeFile(path.join(dataDir(),id+'.json'),raw,{flag:'wx'}).catch(err=>{if(err.code!=='EEXIST')throw err});if(!versions.has(id))versions.set(id,await readWorking(id,parsed));notify();return snapshot()}finally{changingDeck=false}});
+ ipcMain.handle('deck:import',async e=>{requireOperator(e);if(outputActive()||changingDeck)throw new Error('공연 종료 및 기존 작업 완료 후 대본을 불러오세요');changingDeck=true;try{const res=await dialog.showOpenDialog(operator,{properties:['openFile'],filters:[{name:'Cue Deck JSON',extensions:['json']}]});if(res.canceled)return snapshot();const file=res.filePaths[0];if((await stat(file)).size>20*1024*1024)throw new Error('20MB 초과');const raw=await readFile(file,'utf8');const parsed=validatePackage(JSON.parse(raw));readPerformance(parsed);readHistory(parsed);validateNumberTitles(parsed);if(outputActive())throw new Error('공연 중에는 대본 변경 불가');const id=createHash('sha256').update(raw).digest('hex');await writeFile(path.join(dataDir(),id+'.json'),raw,{flag:'wx'}).catch(err=>{if(err.code!=='EEXIST')throw err});if(!versions.has(id))versions.set(id,await readWorking(id,parsed));notify();return snapshot()}finally{changingDeck=false}});
  ipcMain.handle('deck:edit-cue',async(e,expected,patch)=>{
   requireOperator(e);if(outputActive()||changingDeck||scaleChanging||widthChanging||active!==expected)throw Error('공연 종료 후 현재 대본을 다시 확인하세요.');
   if(styleLoadError||widthLoadError)throw Error('기존 자막 설정을 확인하세요.');
   changingDeck=true;
   try{
-   assertWorking(active);assertEditBase(deck,patch);
-   const candidate=editCueRevision(deck,patch),raw=JSON.stringify(candidate,null,2);
+   assertWorking(active);
+   const restoring=['undo','redo'].includes(patch?.action),candidate=applyShowEdit(withPerformance(deck,settings(),captionWidths),patch),raw=JSON.stringify(candidate,null,2);
    if(Buffer.byteLength(raw)>20*1024*1024)throw Error('20MB 초과');
    const currentId=deck.frames[state.index]?.id;
    // Preserve the hashed import and library ID. Only one working file and one
    // previous-state backup per item, neither appears in the version list.
-   await persistWorking(candidate);
+   await persistWorking(candidate,candidate.performanceSettings.captionSettings,candidate.performanceSettings.captionWidths,showEditLabel(deck,patch),restoring);
    const index=currentId?deck.frames.findIndex(f=>f.id===currentId):-1;
    state={...state,index,blackout:state.blackout||index<0,sequence:state.sequence+1};
    notify();return snapshot();

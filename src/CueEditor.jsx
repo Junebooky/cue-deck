@@ -4,7 +4,7 @@ import OperatorCaption from './OperatorCaption.jsx';
 import {cueWidths} from './caption-widths.mjs';
 import {effectiveStyle} from './caption-style.mjs';
 
-export default function CueEditor({deck,frameId,settings,widths,busy,error,onSave,onClose}){
+export default function CueEditor({deck,frameId,settings,widths,busy,error,onSave,onDelete,onClose}){
  const frame=deck.frames.find(f=>f.id===frameId);
  const index=deck.frames.indexOf(frame);
  const {own,anchors,positions}=useMemo(()=>editableCueAnchors(deck,frameId),[deck,frameId]);
@@ -45,6 +45,6 @@ export default function CueEditor({deck,frameId,settings,widths,busy,error,onSav
   <small className="muted">같은 장면·넘버의 다른 큐가 사용하지 않는 카드만 선택할 수 있습니다. 연결 위치에 따라 큐 순서는 자동 정렬됩니다.</small>
   <label>GO TRIGGER<input value={trigger} disabled={busy} onChange={e=>setTrigger(e.target.value)}/></label>
   {(localError||error)&&<p role="alert" className="import-error">{localError||error}</p>}
-  <div className="review-actions"><button disabled={busy} onClick={onClose}>취소</button><button className="primary" disabled={busy} onClick={save}>저장</button></div>
+  <div className="review-actions"><button className="danger" disabled={busy||deck.frames.length<=1} onClick={onDelete}>큐 삭제</button><button disabled={busy} onClick={onClose}>취소</button><button className="primary" disabled={busy} onClick={save}>저장</button></div>
  </div>
 }

@@ -60,12 +60,24 @@ export function buildNumbers(deck){
    result.push({key:scene.id+':'+label,label,code:code(label),act:scene.act,scene:scene.label,first,last:cues.at(-1)??null,count:cues.length,blockId:first===null?heading?.id:null});
   }
  }
- return catalogRows(deck,result);
+ return catalogRows(deck,result).map(n=>{const title=Object.hasOwn(deck.numberTitles??{},n.key)?deck.numberTitles[n.key]:null;if(!title)return n;const prefix=n.label.match(/^M\s*\d+(?:\s*-\s*\d+)?/i)?.[0]??'';return {...n,originalLabel:n.label,label:prefix?prefix+'. '+title:title,editedTitle:title}});
 }
 export function searchNumbers(numbers,query){
  const q=norm(query);if(!q)return numbers;
  const compact=s=>norm(s).replace(/\s+/g,'');
  const m=q.match(/^m?\s*0*(\d+)(?:\s*-\s*(\d+))?$/);
  if(m){const primary=String(Number(m[1]));return numbers.filter(n=>n.code&&(m[2]?n.code===primary+'-'+Number(m[2]):n.code.split('-')[0]===primary))}
- return numbers.filter(n=>compact(n.label).includes(compact(q))||compact(n.catalogLabel).includes(compact(q)));
+ return numbers.filter(n=>compact(n.label).includes(compact(q))||compact(n.catalogLabel).includes(compact(q))||compact(n.originalLabel).includes(compact(q)));
+}
+
+export function validateNumberTitles(deck){
+ const titles=deck.numberTitles;if(titles===undefined)return;
+ if(!titles||typeof titles!=='object'||Array.isArray(titles))throw Error('넘버 제목 설정 오류');
+ const keys=new Set(buildNumbers({...deck,numberTitles:{}}).map(n=>n.key));
+ if(Object.entries(titles).some(([k,v])=>!keys.has(k)||typeof v!=='string'||!v.trim()||v.length>200||/[\r\n]/.test(v)))throw Error('넘버 제목 설정 오류');
+}
+export function editedHeading(deck,b){
+ if(b.kind!=='heading'||!b.number)return null;
+ const key=b.sceneId+':'+b.number;
+ return Object.hasOwn(deck.numberTitles??{},key)?buildNumbers(deck).find(n=>n.key===key)?.label??null:null;
 }

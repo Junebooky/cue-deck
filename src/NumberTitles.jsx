@@ -1,0 +1,5 @@
+import React,{useState} from 'react';
+import {buildNumbers} from './number-search.mjs';
+import {editCount} from './cue-editor.mjs';
+function Row({n,deck,busy,onSave}){const [title,setTitle]=useState(n.editedTitle??n.label.replace(/^M\s*\d+(?:\s*-\s*\d+)?\.?\s*/i,''));return <div className="number-title-row"><b>{n.originalLabel??n.label}</b><label>변경 제목<input aria-label={n.label+' 제목'} value={title} maxLength={200} disabled={busy} onChange={e=>setTitle(e.target.value)}/></label><button disabled={busy||!title.trim()} onClick={()=>onSave({action:'rename-number',key:n.key,title,expectedEditCount:editCount(deck)})}>저장</button>{n.editedTitle&&<button disabled={busy} onClick={()=>onSave({action:'rename-number',key:n.key,title:'',expectedEditCount:editCount(deck)})}>원제 복원</button>}</div>}
+export default function NumberTitles({deck,busy,error,onSave}){return <div className="number-title-editor"><p>M번호 및 송출 위치는 유지됩니다. 수정 제목은 넘버 검색과 해당 본문 제목에 표시됩니다.</p>{buildNumbers(deck).map(n=><Row key={n.key+':'+(n.editedTitle??'')} n={n} deck={deck} busy={busy} onSave={onSave}/>)}{error&&<p role="alert">{error}</p>}</div>}
