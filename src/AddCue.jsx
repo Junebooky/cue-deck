@@ -2,9 +2,27 @@ import React,{useState} from 'react';
 import {freeCueAnchors,editCount} from './cue-editor.mjs';
 import OperatorCaption from './OperatorCaption.jsx';
 const defaultKind=b=>b?.kind==='lyric'?'solo':b?.kind==='place'?'place':'black';
-export default function AddCue({deck,initialAnchor,busy,error,onSave,onClose}){
+export default function AddCue({deck,initialAnchor,afterCue=null,busy,error,onSave,onClose}){
  const free=freeCueAnchors(deck),first=free.find(b=>b.id===initialAnchor)??free[0];
- const [anchor,setAnchor]=useState(first?.id??''),[kind,setKind]=useState(defaultKind(first)),[trigger,setTrigger]=useState(first?.text.slice(0,200)??''),[actor,setActor]=useState(first?.actor??''),[text,setText]=useState(first?.text??''),[second,setSecond]=useState(''),[secondActor,setSecondActor]=useState(''),[local,setLocal]=useState('');
+ const [anchor,setAnchor]=useState(afterCue?.blockId??first?.id??'');
+ const [kind,setKind]=useState(afterCue?'black':defaultKind(first));
+ const [trigger,setTrigger]=useState(afterCue?(afterCue.frame.trigger.slice(0,120)+' 후 · BLACK'):(first?.text.slice(0,200)??''));
+ const [actor,setActor]=useState(first?.actor??''),[text,setText]=useState(first?.text??''),[second,setSecond]=useState(''),[secondActor,setSecondActor]=useState(''),[local,setLocal]=useState('');
+ if(afterCue){
+  const saveBlack=()=>{
+   setLocal('');
+   if(!trigger.trim()){setLocal('GO TRIGGER를 입력하세요.');return}
+   onSave({action:'add-cue',afterFrameId:afterCue.frame.id,blockId:afterCue.blockId,frameId:'operator-'+crypto.randomUUID(),kind:'black',trigger,columns:[],expectedEditCount:editCount(deck)});
+  };
+  return <div className="cue-editor">
+   <p><b>CUE {String(afterCue.index+1).padStart(3,'0')}</b> 다음에 <b>BLACK</b>(빈 화면) 큐를 추가합니다. 가사 사이 간주나 긴 공백 구간에 사용하세요.</p>
+   {afterCue.text&&<div className="cue-editor-source">{afterCue.text}</div>}
+   <label>GO TRIGGER<input autoFocus value={trigger} disabled={busy} onChange={e=>setTrigger(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing&&!busy){e.preventDefault();saveBlack()}}}/></label>
+   <OperatorCaption view={{kind:'black',columns:[]}} variant="preview" exact/>
+   {(local||error)&&<p role="alert" className="import-error">{local||error}</p>}
+   <div className="review-actions"><button disabled={busy} onClick={onClose}>취소</button><button className="primary" disabled={busy} onClick={saveBlack}>블랙 큐 추가</button></div>
+  </div>;
+ }
  const b=free.find(x=>x.id===anchor),allowed=b?.kind==='lyric'?['solo','overlap','black']:b?.kind==='place'?['place','black']:['black'];
  const lines=text.split('\n'),other=second.split('\n'),n=Math.max(lines.length,kind==='overlap'?other.length:0);
  const columns=kind==='black'?[]:kind==='overlap'?[{actor,lines:[...lines,...Array(n-lines.length).fill('')]},{actor:secondActor,lines:[...other,...Array(n-other.length).fill('')]}]:[{actor:kind==='place'?'':actor,lines}];

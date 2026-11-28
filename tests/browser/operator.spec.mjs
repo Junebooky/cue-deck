@@ -414,3 +414,49 @@ test('place preview is green only for next place cue, regular preview returns bl
  await go(page).click();await expect(label).toHaveAttribute('data-kind','solo');await expect(preview).toHaveCSS('border-top-color','rgb(170, 195, 246)');
  await page.locator('#block-b7 .block-text').click();await expect(label).toHaveAttribute('data-kind','place');await expect(preview).toHaveCSS('border-top-color','rgb(168, 223, 189)');await go(page).click();await expect(label).toHaveAttribute('data-kind','solo');await expect(preview).toHaveCSS('border-top-color','rgb(170, 195, 246)');
 });
+
+test('clearing all lyrics in CueEditor saves as BLACK cue and outputs black',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);
+ d.productionId='clear-to-black-fixture';d.title='가사 비우기 블랙 검증';
+ d.blocks.splice(4,0,{...d.blocks[3],id:'second-woo',text:'우우우 우우우우'});
+ d.frames[2].sourceBlockIds=['b4','second-woo'];
+ await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();
+ await page.getByLabel('공연 데이터 파일').setInputFiles({name:'clear-black.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});
+ await page.locator('.version').filter({hasText:'가사 비우기 블랙 검증'}).getByRole('button',{name:'활성화'}).click();
+ await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await page.locator('.cue-group').first().getByRole('button',{name:'큐 003 수정'}).click();
+ const editor=page.getByRole('dialog',{name:'자막 편집'});
+ await editor.getByRole('textbox',{name:'가사 1',exact:true}).fill('');
+ await expect(editor.locator('.cue-editor-preview > div').last().locator('.preview-frame')).toHaveAttribute('data-kind','black');
+ await editor.getByRole('button',{name:'저장',exact:true}).click();
+ await expect(editor).toHaveCount(0);
+ await expect(page.locator('.edited-cue-caption')).toContainText('검정 화면');
+ await page.locator('.cue-group').first().getByRole('button',{name:'큐 003 직접 송출'}).click();
+ await expect(page.locator('.program-frame')).toHaveAttribute('data-kind','black');
+});
+
+test('insert BLACK cue right after an existing cue or cue group from Script',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);
+ d.productionId='insert-black-after-cue';d.title='중간 블랙 추가 검증';
+ d.blocks.splice(4,0,{...d.blocks[3],id:'second-line',text:'두 번째 줄'});
+ d.frames[2].sourceBlockIds=['b4','second-line'];
+ await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();
+ await page.getByLabel('공연 데이터 파일').setInputFiles({name:'insert-black.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});
+ await page.locator('.version').filter({hasText:'중간 블랙 추가 검증'}).getByRole('button',{name:'활성화'}).click();
+ await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await page.getByRole('button',{name:'큐 003 다음 블랙 추가'}).click();
+ const add=page.getByRole('dialog',{name:'큐 추가'});
+ await add.getByRole('textbox',{name:'GO TRIGGER'}).fill('간주 블랙');
+ await add.getByRole('button',{name:'블랙 큐 추가'}).click();
+ await expect(add).toHaveCount(0);
+ await expect(page.locator('.live-label')).toContainText('/ 10');
+ await expect(page.locator('.cue-group-extra')).toContainText('간주 블랙');
+ await page.locator('.cue-group').first().getByRole('button',{name:'큐 003 직접 송출'}).click();
+ await expect(page.locator('.program-frame')).toHaveAttribute('data-kind','solo');
+ await go(page).click();
+ await expect(page.locator('.live-label')).toContainText('004 / 10');
+ await expect(page.locator('.program-frame')).toHaveAttribute('data-kind','black');
+ await go(page).click();
+ await expect(page.locator('.live-label')).toContainText('005 / 10');
+ await expect(page.locator('.program-frame')).toHaveAttribute('data-kind','overlap');
+});
