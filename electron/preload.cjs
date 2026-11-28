@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('deckAPI',{
   setCaptionWidths:(expected,index,value)=>ipcRenderer.invoke('deck:caption-widths',expected,index,value),
   testOutput:(enabled)=>ipcRenderer.invoke('deck:test-output',enabled),
   importDeck:()=>ipcRenderer.invoke('deck:import'),
+  deleteVersion:(id,expectedActive)=>ipcRenderer.invoke('deck:delete-version',id,expectedActive),
   compare:(id)=>ipcRenderer.invoke('deck:compare',id),
   activate:(id,options)=>ipcRenderer.invoke('deck:activate',id,options),
   onState:(fn)=>listen('deck:state-update',fn),

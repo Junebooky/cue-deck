@@ -1,6 +1,7 @@
 import {validatePackage,initialPlayback} from './model.mjs';
 import {demo} from './demo.mjs';
 import {readSettings} from './caption-style.mjs';
+import {assertVersionDelete} from './version-delete.mjs';
 import {compareRevisions,assertActivation} from './revision-review.mjs';
 // Browser rehearsal storage is independent of the Electron production library.
 const openDB=()=>new Promise((resolve,reject)=>{
@@ -53,4 +54,26 @@ export async function compareBrowserDeck(id){
 export async function activateBrowserDeck(id,previous,options){
  const lib=await readLibrary();assertActivation(lib.active,lib.versions.get(lib.active),id,lib.versions.get(id),options);
  await put('active',id);lib.active=id;return withWidths(snapshot(lib,previous,true));
+}
+
+export async function deleteBrowserDeck(id,expectedActive,previous){
+ const db=await openDB();
+ try{await new Promise((resolve,reject)=>{
+  const tx=db.transaction('library','readwrite'),store=tx.objectStore('library');
+  let failure;
+  tx.oncomplete=()=>resolve();
+  tx.onerror=()=>reject(failure??tx.error??Error('대본 삭제 실패'));
+  tx.onabort=()=>reject(failure??tx.error??Error('대본 삭제 취소'));
+  const saved=store.get('versions'),activeReq=store.get('active');
+  activeReq.onsuccess=()=>{
+   try{
+    const entries=Array.isArray(saved.result)?saved.result:[];
+    const versions=new Map([['demo',demo],...entries.map(v=>[v.id,v.deck])]);
+    const active=versions.has(activeReq.result)?activeReq.result:'demo';
+    assertVersionDelete(id,expectedActive,active,versions);
+    store.put(entries.filter(v=>v.id!==id),'versions');
+   }catch(e){failure=e;tx.abort()}
+  };
+ })}finally{db.close()}
+ return withWidths(snapshot(await readLibrary(),previous));
 }

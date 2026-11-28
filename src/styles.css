@@ -180,3 +180,5 @@
 .operator-anchor-options button[aria-pressed=true],.operator-settings-row button[aria-pressed=true]{background:#293b58;border-color:#799bd5;color:#dbe8ff}
 .operator-settings-row>span{margin-right:auto;font-size:12px;color:#b8c4d6}
 @media(max-width:1050px){.focus-status{gap:4px}.focus-status button{padding:4px}.focus-scene{max-width:20%}.focus-status .group-legacy{font-size:10px}}
+
+.reader-unit-content.cue-clickable{cursor:pointer}.reader-unit-content.cue-clickable:hover>.block:not(.live):not(.next),.reader-unit-content.cue-clickable:hover>.cue-group:not(.live):not(.next){outline:1px solid #617b9c;outline-offset:1px}.version-delete:not(:disabled),button.danger{color:#ffc1c4;border-color:#88525b;background:#3b292f}.version-delete:not(:disabled):hover,button.danger:hover:not(:disabled){background:#57333b}

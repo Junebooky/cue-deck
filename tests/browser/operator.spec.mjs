@@ -13,17 +13,13 @@ test('navigation and search preserve full script and never send a cue',async({pa
  await page.keyboard.press('Space');await expect(page.locator('.monitor-label.live-label')).toContainText('002 / 9');
  await expect(page.locator('.monitors .monitor-caption').first()).not.toContainText('준비됐어');
 });
-test('nonsequential cue is preview-only until explicit confirmation',async({page})=>{
- await page.goto('/');await page.getByRole('button',{name:'큐 004 미리보기'}).click();
- await expect(page.locator('.preview-label')).toContainText('JUMP PREVIEW');
- await go(page).click();await expect(page.getByRole('dialog')).toContainText('비순차 송출 확인');
- await expect(page.locator('.live-label')).toContainText('— / 9');
- await page.getByRole('button',{name:'큐 004 직접 송출'}).click();await expect(page.locator('.live-label')).toContainText('004 / 9');
+test('direct card click sends immediately and resumes sequential preview, black and restore',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
+ await page.locator('#block-b5 .block-text').click();await expect(page.locator('.live-label')).toContainText('004 / 9');await expect(page.locator('.preview-label')).toContainText('005');await expect(page.getByRole('dialog')).toHaveCount(0);
  await expect(page.locator('.monitors .monitor-caption').first().locator('.caption-cell')).toHaveCount(4);
- await page.getByRole('button',{name:'■ BLACK',exact:true}).click();
- await expect(page.locator('.monitors .monitor-caption').first().locator('.caption-cell')).toHaveCount(0);
- await page.getByRole('button',{name:'■ RESTORE',exact:true}).click();
- await expect(page.locator('.monitors .monitor-caption').first().locator('.caption-cell')).toHaveCount(4);
+ await page.getByRole('button',{name:'■ BLACK',exact:true}).click();await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);
+ await page.getByRole('button',{name:'■ RESTORE',exact:true}).click();await expect(page.locator('.program-frame .caption-cell')).toHaveCount(4);
+ await go(page).click();await expect(page.locator('.live-label')).toContainText('005 / 9');
 });
 test('panel resizing, follow and reader size persist across reload',async({page})=>{
  await page.goto('/');const splitter=page.getByRole('separator',{name:'장면 패널 너비'});await splitter.focus();await page.keyboard.press('ArrowRight');await expect(splitter).toHaveAttribute('aria-valuenow','212');
@@ -46,8 +42,8 @@ test('invalid JSON import leaves active revision intact',async({page})=>{
  await expect(page.locator('.import-error')).toContainText('잘못된 공연 데이터 형식');await expect(page.locator('.version')).toHaveCount(1);
 });
 test('cue kind remains visible when next or live, and program lamp animates only in operator view',async({page})=>{
- await page.goto('/');await expect(page.locator('.program-lamp')).toHaveCSS('animation-name','program-pulse');await expect(page.getByRole('button',{name:'큐 001 미리보기'})).toContainText('PLACE');await expect(page.getByRole('button',{name:'큐 001 미리보기'})).toContainText('NEXT');
- await go(page).click();await expect(page.getByRole('button',{name:'큐 002 미리보기'})).toContainText('BLACK');await expect(page.getByRole('button',{name:'큐 002 미리보기'})).toContainText('NEXT');await expect(page.locator('.block.dialogue .block-kind').first()).toHaveText('드라마');
+ await page.goto('/');await expect(page.locator('.program-lamp')).toHaveCSS('animation-name','program-pulse');await expect(page.getByRole('button',{name:'큐 001 직접 송출'})).toContainText('PLACE');await expect(page.getByRole('button',{name:'큐 001 직접 송출'})).toContainText('NEXT');
+ await go(page).click();await expect(page.getByRole('button',{name:'큐 002 직접 송출'})).toContainText('BLACK');await expect(page.getByRole('button',{name:'큐 002 직접 송출'})).toContainText('NEXT');await expect(page.locator('.block.dialogue .block-kind').first()).toHaveText('드라마');
  await page.goto('/?mode=audience');await expect(page.locator('.program-lamp')).toHaveCount(0);
 });
 
@@ -77,9 +73,9 @@ test('operator captions are readable, independently colored, and source cards ha
 test('long operator lines fit after narrowing the monitor, all overlap rows share size',async({page})=>{
  const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);d.productionId='fit-fixture';d.title='긴 가사 검증';d.frames[3].columns[0].lines=['아주 긴 가사를 읽어야 하는 상황에서도 모든 문장이 화면 안에 정확히 들어와야 합니다 '.repeat(2),'한 줄 더'];d.frames[3].columns[1].lines=['동시에 노래하는 배우의 긴 가사도 같은 크기로 표시합니다 '.repeat(2),''];
  await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();await page.getByLabel('공연 데이터 파일').setInputFiles({name:'fit.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});await page.locator('.version').filter({hasText:'긴 가사 검증'}).getByRole('button',{name:'활성화'}).click();await expect(page.locator('.brand')).toContainText('긴 가사 검증');await page.getByRole('button',{name:'닫기',exact:true}).click();
- await page.getByRole('button',{name:'큐 004 미리보기'}).click();await expect(page.locator('.preview-frame .caption-cell')).toHaveCount(4);
+ await page.getByRole('button',{name:'큐 004 직접 송출'}).click();await expect(page.locator('.program-frame .caption-cell')).toHaveCount(4);
  const splitter=page.getByRole('separator',{name:'송출 모니터 너비'});await splitter.focus();await page.keyboard.press('Home');
- const fit=()=>page.locator('.preview-frame').evaluate(root=>{const body=root.querySelector('.caption-grid'),cells=[...body.querySelectorAll('.caption-cell')];return {fits:body.getBoundingClientRect().height<=root.clientHeight-18&&cells.every(c=>c.scrollWidth<=c.clientWidth+1),sizes:new Set(cells.map(c=>getComputedStyle(c).fontSize)).size}});
+ const fit=()=>page.locator('.program-frame').evaluate(root=>{const body=root.querySelector('.caption-grid'),cells=[...body.querySelectorAll('.caption-cell')];return {fits:body.getBoundingClientRect().height<=root.clientHeight-18&&cells.every(c=>c.scrollWidth<=c.clientWidth+1),sizes:new Set(cells.map(c=>getComputedStyle(c).fontSize)).size}});
  await expect.poll(fit).toEqual({fits:true,sizes:1});
 });
 
@@ -94,8 +90,8 @@ test('caption size draft is local, limits are enforced, apply retains cue and pe
 test('C group highlights all source lines and advances once per audience cue',async({page})=>{
  const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);d.productionId='group-fixture';d.title='그룹 테스트';d.blocks.splice(4,0,{...d.blocks[3],id:'second-line',text:'우리의 길을 찾아가'});d.blocks[3].text='새로운 하루를 열어';d.frames[2].sourceBlockIds=[d.frames[2].blockId,'second-line'];
  await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();await page.getByLabel('공연 데이터 파일').setInputFiles({name:'group.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});await page.locator('.version').filter({hasText:'그룹 테스트'}).getByRole('button',{name:'활성화'}).click();await expect(page.locator('.brand')).toContainText('그룹 테스트');await page.getByRole('button',{name:'닫기',exact:true}).click();
- await go(page).click();await go(page).click();const group=page.locator('.cue-group.next');await expect(group.locator('[data-cue-status=NEXT]')).toHaveCount(2);await expect(group.getByRole('button',{name:'큐 003 미리보기'})).toHaveCount(1);
- await go(page).click();const live=page.locator('.cue-group.live');await expect(live.locator('[data-cue-status=LIVE]')).toHaveCount(2);await expect(live).toContainText('우리의 길을 찾아가');await expect(page.locator('.live-label')).toContainText('003 / 9');await expect(page.locator('.program-frame .caption-cell')).toHaveCount(2);await expect(live.getByRole('button',{name:'큐 003 미리보기'})).toHaveCount(1);await go(page).click();await expect(page.locator('.live-label')).toContainText('004 / 9');await expect(page.locator('.cue-group.live')).toHaveCount(0);
+ await go(page).click();await go(page).click();const group=page.locator('.cue-group.next');await expect(group.locator('[data-cue-status=NEXT]')).toHaveCount(2);await expect(group.getByRole('button',{name:'큐 003 직접 송출'})).toHaveCount(1);
+ await go(page).click();const live=page.locator('.cue-group.live');await expect(live.locator('[data-cue-status=LIVE]')).toHaveCount(2);await expect(live).toContainText('우리의 길을 찾아가');await expect(page.locator('.live-label')).toContainText('003 / 9');await expect(page.locator('.program-frame .caption-cell')).toHaveCount(2);await expect(live.getByRole('button',{name:'큐 003 직접 송출'})).toHaveCount(1);await go(page).click();await expect(page.locator('.live-label')).toContainText('004 / 9');await expect(page.locator('.cue-group.live')).toHaveCount(0);
 });
 
 test('bundled fonts load locally, switch both monitors without advancing cue, persist',async({page})=>{
@@ -112,9 +108,9 @@ test('legacy two-line audience frame groups both source cards; heading is a cent
  d.blocks.splice(0,0,{id:'heading-test',kind:'heading',actor:'',sceneId:'s1',text:'M01. 테스트 넘버 / 배우 A'});
  d.frames.unshift({id:'heading-black',blockId:'heading-test',kind:'black',trigger:'공연 시작',columns:[]});
  await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();await page.getByLabel('공연 데이터 파일').setInputFiles({name:'legacy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});await page.locator('.version').filter({hasText:'프레임 연결 테스트'}).getByRole('button',{name:'활성화'}).click();await expect(page.locator('.brand')).toContainText('프레임 연결 테스트');await page.getByRole('button',{name:'닫기',exact:true}).click();
- const heading=page.locator('.script-divider');await expect(heading).toHaveCount(1);await expect(heading.locator('.divider-text')).toHaveCSS('text-align','center');await expect(heading).toHaveCSS('background-color','rgba(0, 0, 0, 0)');await expect(heading.getByRole('button',{name:'큐 001 미리보기'})).toContainText('BLACK');
+ const heading=page.locator('.script-divider');await expect(heading).toHaveCount(1);await expect(heading.locator('.divider-text')).toHaveCSS('text-align','center');await expect(heading).toHaveCSS('background-color','rgba(0, 0, 0, 0)');await expect(heading.getByRole('button',{name:'큐 001 직접 송출'})).toContainText('BLACK');
  await go(page).click();await go(page).click();await go(page).click();const next=page.locator('.cue-group.next');await expect(next.locator('[data-cue-status=NEXT]')).toHaveCount(2);
- await go(page).click();const live=page.locator('.cue-group.live');await expect(live.locator('[data-cue-status=LIVE]')).toHaveCount(2);await expect(live).toContainText('우리의 길을 찾아가');await expect(page.locator('.live-label')).toContainText('004 / 10');await expect(live.getByRole('button',{name:'큐 004 미리보기'})).toHaveCount(1);
+ await go(page).click();const live=page.locator('.cue-group.live');await expect(live.locator('[data-cue-status=LIVE]')).toHaveCount(2);await expect(live).toContainText('우리의 길을 찾아가');await expect(page.locator('.live-label')).toContainText('004 / 10');await expect(live.getByRole('button',{name:'큐 004 직접 송출'})).toHaveCount(1);
  await go(page).click();await expect(page.locator('.live-label')).toContainText('005 / 10');
 });
 
@@ -224,12 +220,12 @@ test('solo two-line policy keeps authored text and fits an extra soft wrap by un
  await expect(audience.locator('.caption-grid')).toHaveCSS('font-weight','600');await expect.poll(()=>audience.locator('.caption-grid').evaluate(el=>['normal','0px'].includes(getComputedStyle(el).letterSpacing))).toBe(true);
 });
 
-test('number search selects first lyric without sending until explicit confirmation, can jump backward',async({page})=>{
+test('number search locates without sending, then one card click sends forward and backward',async({page})=>{
  await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();
- await page.getByRole('button',{name:'넘버 검색',exact:true}).click();const dialog=page.getByRole('dialog',{name:'넘버 검색'});await dialog.getByRole('searchbox').fill('M02');await dialog.getByRole('button',{name:/M02/}).click();await expect(page.locator('.live-label')).toContainText('001 / 9');
- await dialog.getByRole('button',{name:'PREVIEW로 이동'}).click();await expect(page.locator('.preview-label')).toContainText('007');await expect(page.locator('.live-label')).toContainText('001 / 9');
- await page.getByRole('button',{name:'넘버 검색',exact:true}).click();await dialog.getByRole('searchbox').fill('M02');await dialog.getByRole('searchbox').press('Enter');await dialog.getByRole('button',{name:'CUE 007 직접 송출'}).click();await expect(page.locator('.live-label')).toContainText('007 / 9');await expect(page.locator('.monitors .program-frame .caption-cell')).toHaveText(['바람이 부는 아침','다시 한 걸음']);
- await page.getByRole('button',{name:'넘버 검색',exact:true}).click();await dialog.getByRole('searchbox').fill('M01');await dialog.getByRole('searchbox').press('Enter');await dialog.getByRole('button',{name:'CUE 003 직접 송출'}).click();await expect(page.locator('.live-label')).toContainText('003 / 9');await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('004 / 9');
+ await page.getByRole('button',{name:'넘버 검색',exact:true}).click();const dialog=page.getByRole('dialog',{name:'넘버 검색'});await dialog.getByRole('searchbox').fill('M02');await dialog.getByRole('button',{name:/M02/}).click();await expect(dialog).toHaveCount(0);await expect(page.locator('.live-label')).toContainText('001 / 9');
+ await page.locator('#block-b9 .block-text').click();await expect(page.locator('.live-label')).toContainText('007 / 9');await expect(page.locator('.preview-label')).toContainText('008');
+ await page.getByRole('button',{name:'넘버 검색',exact:true}).click();await dialog.getByRole('searchbox').fill('M01');await dialog.getByRole('searchbox').press('Enter');await expect(dialog).toHaveCount(0);await expect(page.locator('.live-label')).toContainText('007 / 9');
+ await page.locator('#block-b4 .block-text').click();await expect(page.locator('.live-label')).toContainText('003 / 9');await expect(page.locator('.preview-label')).toContainText('004');await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('004 / 9');
 });
 
 test('performance focus is automatic, gives script more room, preserves output and restores normal layout',async({page})=>{
@@ -258,6 +254,24 @@ test('look ahead anchors current read or cue near top in ordinary rehearsal, inc
  const reader=page.locator('.script-scroll');const nearTop=async selector=>{await expect.poll(async()=>{const top=await reader.evaluate(el=>el.getBoundingClientRect().top);const card=page.locator(selector);const y=await card.evaluate(el=>el.getBoundingClientRect().top);return Math.abs(y-top)}).toBeLessThan(24)};
  await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('001 / 9');await page.keyboard.press('ArrowRight');await expect(page.locator('#block-b2')).toHaveClass(/reading-hold/);await nearTop('#block-b2');
  await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('002 / 9');await page.keyboard.press('ArrowRight');await expect(page.locator('.live-label')).toContainText('003 / 9');await nearTop('#block-b4');
- await page.getByRole('button',{name:'넘버 검색',exact:true}).click();const dialog=page.getByRole('dialog',{name:'넘버 검색'});await dialog.getByRole('searchbox').fill('M03');await dialog.getByRole('searchbox').press('Enter');await dialog.getByRole('button',{name:'CUE 009 직접 송출'}).click();await expect(page.locator('.live-label')).toContainText('009 / 9');await nearTop('.script-scroll .block.live');
+ await page.getByRole('button',{name:'넘버 검색',exact:true}).click();const dialog=page.getByRole('dialog',{name:'넘버 검색'});await dialog.getByRole('searchbox').fill('M03');await dialog.getByRole('searchbox').press('Enter');await expect(dialog).toHaveCount(0);await page.locator('#block-b11 .block-text').click();await expect(page.locator('.live-label')).toContainText('009 / 9');await nearTop('.script-scroll .block.live');
  await page.getByRole('button',{name:'스크롤',exact:true}).click();await page.getByRole('button',{name:'중앙',exact:true}).click();await page.getByRole('button',{name:'완료',exact:true}).click();await page.reload();await page.getByRole('button',{name:'스크롤',exact:true}).click();await expect(page.getByRole('button',{name:'중앙',exact:true})).toHaveAttribute('aria-pressed','true');
+});
+
+test('delete inactive version with confirmation, active and demo protected, persistence after reload',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();
+ const file=page.getByLabel('공연 데이터 파일');
+ for(const title of ['삭제 검증 A','삭제 검증 B']){
+  const d={...demo,productionId:title,title,revision:'v1'};
+  await file.setInputFiles({name:'version.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});await expect(page.locator('.version').filter({hasText:title})).toBeVisible();
+ }
+ const a=page.locator('.version').filter({hasText:'삭제 검증 A'}),b=page.locator('.version').filter({hasText:'삭제 검증 B'});
+ await a.getByRole('button',{name:'활성화'}).click();await expect(a.getByRole('button',{name:/삭제$/})).toBeDisabled();
+ await b.getByRole('button',{name:/삭제$/}).click();const confirm=page.getByRole('dialog',{name:'대본 삭제 확인'});await confirm.getByRole('button',{name:'취소',exact:true}).click();await expect(b).toBeVisible();
+ await b.getByRole('button',{name:/삭제$/}).click();await confirm.getByRole('button',{name:'버전 삭제',exact:true}).click();await expect(b).toHaveCount(0);await expect(a).toBeVisible();
+ await page.reload();await page.getByRole('button',{name:'대본 관리'}).click();await expect(b).toHaveCount(0);await expect(a.getByRole('button',{name:'사용 중'})).toBeDisabled();
+});
+test('lyric search navigates without sending, then card click sends and sets sequential preview',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('바람이 부는 아침');await expect(page.locator('.active-hit')).toContainText('바람이 부는 아침');await expect(page.locator('.live-label')).toContainText('— / 9');
+ await page.locator('.active-hit .block-text').click();await expect(page.locator('.live-label')).toContainText('007 / 9');await expect(page.locator('.preview-label')).toContainText('008');await expect(page.getByRole('dialog')).toHaveCount(0);
 });

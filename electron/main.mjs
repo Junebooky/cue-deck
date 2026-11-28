@@ -1,5 +1,5 @@
 import {app,BrowserWindow,ipcMain,screen,dialog} from 'electron';
-import {readFile,writeFile,mkdir,readdir,rename,stat} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,readdir,rename,stat,unlink} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
@@ -12,6 +12,7 @@ import {validFont,readFont,DEFAULT_FONT} from '../src/caption-fonts.mjs';
 import {isNativeCueShortcut} from '../src/shortcuts.mjs';
 import {cueWidths,updateWidths,assertWidthEdit} from '../src/caption-widths.mjs';
 import {readSettings,effectiveStyle,editSettings} from '../src/caption-style.mjs';
+import {assertVersionDelete} from '../src/version-delete.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
 let operator=null,audience=null,displayId=null,ready=false,ack=-1,deck=validatePackage(demo),state=initialPlayback(),versions=new Map([['demo',deck]]),active='demo';
 let ackTimer=null,startTimer=null,placementTimer=null,revision=0,changingDeck=false,outputError='',testing=false,started=false,ackDeadline=0;
@@ -123,6 +124,12 @@ function register(){
  ipcMain.handle('deck:test-output',(e,enabled)=>{requireOperator(e);if(!audience||!started||!ready)throw new Error('관객 화면 연결 확인 후 테스트하세요');testing=enabled===true;state=playback(state,{type:'BLACK'},deck.frames.length);sendOutput();notify();return snapshot()});
  ipcMain.handle('deck:command',(e,action)=>{requireOperator(e);if(!action||!['GO','PREV','BLACK','RESTORE'].includes(action.type))throw new Error('지원하지 않는 명령');if((widthChanging||scaleChanging)&&action.type!=='BLACK')throw Error('열 너비 저장 중입니다.');if(testing&&action.type!=='BLACK')throw new Error('화면 테스트를 종료한 후 송출하세요');if(action.type!=='BLACK'&&audience&&!ready)throw new Error('관객 화면 준비 확인 대기');if(action.type==='BLACK')testing=false;state=playback(state,action,deck.frames.length);sendOutput();notify();return snapshot()});
  ipcMain.handle('deck:import',async e=>{requireOperator(e);if(audience||changingDeck)throw new Error('공연 종료 및 기존 작업 완료 후 대본을 불러오세요');changingDeck=true;try{const res=await dialog.showOpenDialog(operator,{properties:['openFile'],filters:[{name:'Cue Deck JSON',extensions:['json']}]});if(res.canceled)return snapshot();const file=res.filePaths[0];if((await stat(file)).size>20*1024*1024)throw new Error('20MB 초과');const raw=await readFile(file,'utf8');const parsed=validatePackage(JSON.parse(raw));if(audience)throw new Error('공연 중에는 대본 변경 불가');const id=createHash('sha256').update(raw).digest('hex');await writeFile(path.join(dataDir(),id+'.json'),raw,{flag:'wx'}).catch(err=>{if(err.code!=='EEXIST')throw err});versions.set(id,parsed);notify();return snapshot()}finally{changingDeck=false}});
+ ipcMain.handle('deck:delete-version',async(e,id,expectedActive)=>{
+  requireOperator(e);if(changingDeck||widthChanging||scaleChanging)throw Error('다른 작업이 진행 중입니다.');
+  assertVersionDelete(id,expectedActive,active,versions,!!audience);
+  changingDeck=true;
+  try{await unlink(path.join(dataDir(),id+'.json'));versions.delete(id);notify();return snapshot()}finally{changingDeck=false}
+ });
  ipcMain.handle('deck:compare',(e,id)=>{requireOperator(e);if(audience||changingDeck||!versions.has(id))throw new Error('공연 종료 후 비교하세요');return {baseId:active,candidateId:id,...compareRevisions(deck,versions.get(id))}});
  ipcMain.handle('deck:activate',async(e,id,options)=>{requireOperator(e);if(audience||changingDeck||widthChanging||scaleChanging||!versions.has(id))throw new Error('대본 변경 불가');assertActivation(active,deck,id,versions.get(id),options);changingDeck=true;try{const nextWidths=await loadWidths(id),nextStyle=await loadStyle(id);await persistActive(id);if(audience)throw new Error('공연 중에는 대본 변경 불가');active=id;deck=versions.get(id);captionWidths=nextWidths;widthLoadError='';captionSettings=nextStyle;styleLoadError='';state=playback(state,{type:'RESET'},deck.frames.length);notify();return snapshot()}finally{changingDeck=false}});
 }

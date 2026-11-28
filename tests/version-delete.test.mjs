@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {assertVersionDelete} from '../src/version-delete.mjs';
+test('only inactive known package hashes can be deleted, never during output',()=>{const a='a'.repeat(64),b='b'.repeat(64),versions=new Map([['demo',{}],[a,{}],[b,{}]]);assert.doesNotThrow(()=>assertVersionDelete(b,a,a,versions));for(const args of [[a,a,a,versions],[b,'demo',a,versions],[b,a,a,versions,true],['demo',a,a,versions],['../active',a,a,versions]])assert.throws(()=>assertVersionDelete(...args))});
