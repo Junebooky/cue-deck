@@ -27,7 +27,12 @@ try{
  await page.getByRole('button',{name:'리허설 노트'}).click();
  await page.getByRole('button',{name:'새 리허설 시작'}).click();
  await page.locator('.transport .go').focus();await nativeKey('E');await markCount(1);
+ const memo=page.getByRole('textbox',{name:'오류 메모'});
+ await memo.waitFor({state:'visible'});assert.equal(await memo.evaluate(el=>el===document.activeElement),true);
+ await memo.fill('송출 오류 테스트');await memo.press('Enter');
+ await page.getByRole('dialog',{name:'오류 메모'}).waitFor({state:'hidden'});
  await nativeKey('E',['control']);await markCount(2);
+ await memo.press('Escape');await page.getByRole('dialog',{name:'오류 메모'}).waitFor({state:'hidden'});
  await page.getByRole('textbox',{name:'대사 · 가사 검색'}).focus();
  await nativeKey('B',['control']);await nativeKey('E',['control']);
  // Synchronize after the input events before asserting that no command ran.
@@ -35,5 +40,43 @@ try{
  assert.equal(await page.locator('.program-frame .caption-cell').count(),1);
  assert.match(await page.locator('#block-b1 .error-mark').innerText(),/2회/);
  assert.match(await page.locator('.live-label').innerText(),/001 \/ 9/);
+ // A single-display performance uses the operator PROGRAM, not a covering audience window.
+ const count=await app.evaluate(({screen})=>screen.getAllDisplays().length);
+ if(count===1){
+  await page.getByRole('button',{name:'▶ 공연 시작'}).click();
+  await page.getByRole('button',{name:'공연 시작 · 검정 대기'}).click();
+  await page.getByLabel('공연 집중 모드').waitFor({state:'visible'});
+  await page.getByText('● 단일 화면 · PROGRAM',{exact:true}).waitFor({state:'visible'});
+  await captionCount(0);
+  assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().length),1);
+  await page.locator('.transport .go').click();await captionCount(1);
+  const live=await page.evaluate(()=>window.deckAPI.state());
+  assert.equal(live.output.open,true);assert.equal(live.output.localOnly,true);assert.equal(live.output.ack,-1);
+  assert.equal(await page.evaluate(async()=>{try{await window.deckAPI.editCue('demo',{});return false}catch{return true}}),true);
+  await page.getByRole('button',{name:'대본 검색',exact:true}).click();
+  await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('우리의 길을 찾아가');
+  await page.locator('#block-b4 .block-text').click();
+  await captionCount(2);
+  assert.equal((await page.evaluate(()=>window.deckAPI.state())).state.index,2);
+  await page.locator('.transport .go').click();await captionCount(4);
+  assert.equal((await page.evaluate(()=>window.deckAPI.state())).state.index,3);
+  await nativeKey('Escape');
+  await page.getByRole('button',{name:'공연 종료 · Enter'}).click();await captionCount(0);
+  assert.equal((await page.evaluate(()=>window.deckAPI.state())).output.open,false);
+ }
+ const initial=await page.evaluate(()=>window.deckAPI.state());
+ const first=await page.evaluate(()=>window.deckAPI.editCue('demo',{frameId:'c3',expectedEditCount:0,sourceBlockIds:['b4'],trigger:'새로운 하루를 열어',columns:[{actor:'배우 A',lines:['첫 수정','우리의 길을 찾아가']}]}));
+ assert.equal(first.active,initial.active);assert.equal(first.versions.length,initial.versions.length);
+ assert.equal(first.deck.operatorEditCount,1);
+ assert.equal(await page.evaluate(async()=>{try{await window.deckAPI.editCue('demo',{expectedEditCount:0});return false}catch{return true}}),true);
+ const second=await page.evaluate(()=>window.deckAPI.editCue('demo',{frameId:'c3',expectedEditCount:1,sourceBlockIds:['b4'],trigger:'새로운 하루를 열어',columns:[{actor:'배우 A',lines:['두 번째 수정','우리의 길을 찾아가']}]}));
+ assert.equal(second.active,initial.active);assert.equal(second.versions.length,initial.versions.length);assert.equal(second.deck.revision,initial.deck.revision);
+ assert.equal(second.deck.operatorEditCount,2);assert.deepEqual(second.deck.blocks,initial.deck.blocks);
+ await app.close();
+ app=await electron.launch({args:['.', '--user-data-dir='+profile,...(process.platform==='linux'?['--no-sandbox']:[])],env:{...process.env,XDG_CONFIG_HOME:profile},timeout:60000});
+ const reopened=await app.firstWindow();await reopened.getByRole('button',{name:'대본 관리'}).waitFor({state:'visible'});
+ const saved=await reopened.evaluate(()=>window.deckAPI.state());
+ assert.equal(saved.active,initial.active);assert.equal(saved.versions.length,initial.versions.length);
+ assert.equal(saved.deck.operatorEditCount,2);assert.equal(saved.deck.frames[2].columns[0].lines[0],'두 번째 수정');
  console.log('Electron native input smoke test: B, Ctrl+B, E, Ctrl+E, editable guard passed');
 }finally{await app?.close();await rm(profile,{recursive:true,force:true})}

@@ -4,7 +4,7 @@ export function describeDisplays(displays,operatorId,primaryId){
 }
 export function selectOutputDisplay(displays,id,operatorId){
  const d=displays.find(d=>d.id===id);
- if(!d||id===operatorId)throw new Error('운영자 화면과 다른 확장 디스플레이를 선택하세요');
+ if(!d||(id===operatorId&&displays.length!==1))throw new Error('운영자 화면과 다른 확장 디스플레이를 선택하세요');
  return d;
 }
 export function coversDisplay(windowBounds,targetBounds){

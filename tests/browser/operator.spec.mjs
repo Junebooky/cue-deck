@@ -136,10 +136,11 @@ test('explicit arrow navigation scrolls to drama even with automatic FOLLOW disa
 test('E records active cue and READ without altering playback, ignores repeat and text input, persists notes',async({page})=>{
  await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();await page.keyboard.press('e');await expect(page.locator('.error-mark')).toHaveCount(0);
  await page.getByRole('button',{name:'리허설 노트'}).click();await page.getByRole('button',{name:'새 리허설 시작'}).click();await expect(page.getByRole('dialog')).toHaveCount(0);await page.keyboard.press('e');await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');await expect(page.locator('.live-label')).toContainText('001 / 9');
- await page.keyboard.down('e');await page.keyboard.down('e');await page.keyboard.up('e');await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');await page.keyboard.press('Control+z');await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');
- await page.keyboard.press('ArrowRight');await expect(page.locator('#block-b2')).toHaveClass(/reading-hold/);await page.keyboard.press('e');await expect(page.locator('#block-b2 .error-mark')).toContainText('1회');await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);
+ const memo=page.getByRole('textbox',{name:'오류 메모'});await expect(memo).toBeFocused();await memo.fill('장소 표시 지연');await memo.press('Enter');await expect(page.getByRole('dialog',{name:'오류 메모'})).toHaveCount(0);
+ await page.keyboard.down('e');await page.keyboard.down('e');await page.keyboard.up('e');await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');await memo.press('Escape');await page.keyboard.press('Control+z');await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');
+ await page.keyboard.press('ArrowRight');await expect(page.locator('#block-b2')).toHaveClass(/reading-hold/);await page.keyboard.press('e');await expect(page.locator('#block-b2 .error-mark')).toContainText('1회');await expect(page.locator('.program-frame .caption-cell')).toHaveCount(0);await expect(memo).toBeFocused();await memo.fill('내레이션 확인');await memo.press('Enter');
  await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('e');await page.keyboard.press('e');await expect(page.locator('#block-b2 .error-mark')).toContainText('1회');
- await page.getByRole('button',{name:/REHEARSAL/}).click();await expect(page.locator('.note-item')).toHaveCount(2);await page.locator('.note-item').last().getByText('메모',{exact:true}).locator('textarea').fill('내레이션 확인');await page.locator('.note-item').last().getByRole('checkbox').check();await page.reload();await expect(page.getByRole('button',{name:'리허설 노트'})).toBeEnabled();await page.getByRole('button',{name:'리허설 노트'}).click();await expect(page.locator('.note-item')).toHaveCount(2);await expect(page.locator('.note-item').last().locator('textarea').last()).toHaveValue('내레이션 확인');await expect(page.locator('.note-item').last().getByRole('checkbox')).toBeChecked();
+ await page.getByRole('button',{name:/REHEARSAL/}).click();await expect(page.locator('.note-item')).toHaveCount(2);await expect(page.locator('.note-item').first().locator('textarea').last()).toHaveValue('장소 표시 지연');await expect(page.locator('.note-item').last().locator('textarea').last()).toHaveValue('내레이션 확인');await page.locator('.note-item').last().getByRole('checkbox').check();await page.reload();await expect(page.getByRole('button',{name:'리허설 노트'})).toBeEnabled();await page.getByRole('button',{name:'리허설 노트'}).click();await expect(page.locator('.note-item')).toHaveCount(2);await expect(page.locator('.note-item').last().locator('textarea').last()).toHaveValue('내레이션 확인');await expect(page.locator('.note-item').last().getByRole('checkbox')).toBeChecked();
 });
 
 test('B/E physical keys work on focused buttons, Korean layout and Ctrl aliases; protected input and repeat',async({page})=>{
@@ -151,8 +152,8 @@ test('B/E physical keys work on focused buttons, Korean layout and Ctrl aliases;
  await page.evaluate(()=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyB',key:'ㅠ',bubbles:true,cancelable:true})));await expect(program.locator('.caption-cell')).toHaveCount(0);
  await page.keyboard.press('Control+b');await expect(program.locator('.caption-cell')).toHaveCount(1);
  await page.getByRole('button',{name:'리허설 노트'}).click();await page.getByRole('button',{name:'새 리허설 시작'}).click();
- await go(page).focus();await page.evaluate(()=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyE',key:'ㄷ',bubbles:true,cancelable:true})));await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');
- await page.keyboard.press('Control+e');await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');
+ await go(page).focus();await page.evaluate(()=>document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyE',key:'ㄷ',bubbles:true,cancelable:true})));await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');await page.getByRole('textbox',{name:'오류 메모'}).press('Escape');
+ await page.keyboard.press('Control+e');await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');await page.getByRole('textbox',{name:'오류 메모'}).press('Escape');
  await page.keyboard.down('b');await page.keyboard.down('b');await page.keyboard.up('b');await expect(program.locator('.caption-cell')).toHaveCount(0);
  const search=page.getByRole('textbox',{name:'대사 · 가사 검색'});await search.focus();await page.keyboard.press('Control+b');await page.keyboard.press('Control+e');await page.keyboard.press('b');await page.keyboard.press('e');await expect(search).toHaveValue('be');await expect(program.locator('.caption-cell')).toHaveCount(0);await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');
  await search.press('Escape');await page.keyboard.press('Control+b');await expect(program.locator('.caption-cell')).toHaveCount(1);await expect(page.locator('.live-label')).toContainText('001 / 9');
@@ -258,6 +259,126 @@ test('look ahead anchors current read or cue near top in ordinary rehearsal, inc
  await page.getByRole('button',{name:'스크롤',exact:true}).click();await page.getByRole('button',{name:'중앙',exact:true}).click();await page.getByRole('button',{name:'완료',exact:true}).click();await page.reload();await page.getByRole('button',{name:'스크롤',exact:true}).click();await expect(page.getByRole('button',{name:'중앙',exact:true})).toHaveAttribute('aria-pressed','true');
 });
 
+test('single-active duet expands to the ordinary lyric layout in program and preview',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);
+ d.productionId='single-active-lyric-fixture';d.title='단일 가창 검증';
+ d.frames[3].columns[1].lines=['',''];
+ await page.goto('/');
+ await page.getByRole('button',{name:'대본 관리'}).click();
+ await page.getByLabel('공연 데이터 파일').setInputFiles({name:'single-active.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});
+ await page.locator('.version').filter({hasText:'단일 가창 검증'}).getByRole('button',{name:'활성화'}).click();
+ await expect(page.locator('.brand')).toContainText('단일 가창 검증');
+ await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await page.getByRole('button',{name:'큐 003 직접 송출'}).click();
+ const preview=page.locator('.preview-frame'),program=page.locator('.program-frame');
+ await expect(preview).toHaveAttribute('data-kind','solo');
+ await expect(preview).toHaveAttribute('data-ratios','100');
+ await expect(preview.locator('.caption-cell')).toHaveCount(2);
+ await expect(preview.locator('.caption-actor')).toHaveCount(0);
+ await page.getByRole('button',{name:'가창 1명 · 전체 너비 검수'}).click();
+ const review=page.getByRole('dialog');
+ await expect(review).toContainText('일반 자막 자동 적용');
+ await expect(review.locator('.caption-grid .caption-cell')).toHaveCount(2);
+ await expect(review.locator('.caption-boundary')).toHaveCount(0);
+ await review.getByRole('button',{name:'닫기',exact:true}).click();
+ await go(page).click();
+ await expect(program).toHaveAttribute('data-kind','solo');
+ await expect(program).toHaveAttribute('data-ratios','100');
+ await expect(program.locator('.caption-cell')).toHaveText(['저 멀리 빛나는 길','서로의 손을 잡고']);
+ await expect(program.locator('.caption-actor')).toHaveCount(0);
+});
+
+test('audience expands a single-active overlap and restores the split for a real duet',async({page})=>{
+ await page.addInitScript(()=>{
+  const view={kind:'overlap',columns:[{actor:'A',lines:['','']},{actor:'B',lines:['새로운 하루를 열어','우리의 길을 찾아가']}]};
+  window.deckAPI={onOutput(fn){window.emitFrame=fn;return()=>{}},outputState:async()=>({sequence:1,view,captionScale:100}),ack:()=>{}};
+ });
+ await page.goto('/?mode=audience');
+ const caption=page.locator('.audience-caption');
+ await expect(caption).toHaveAttribute('data-kind','solo');
+ await expect(caption).toHaveAttribute('data-ratios','100');
+ await expect(caption.locator('.caption-cell')).toHaveText(['새로운 하루를 열어','우리의 길을 찾아가']);
+ await expect(caption.locator('.caption-actor')).toHaveCount(0);
+ await page.evaluate(()=>window.emitFrame({sequence:2,view:{kind:'overlap',columns:[{actor:'A',lines:['첫 번째 가사','둘째 가사']},{actor:'B',lines:['함께','']}]},captionScale:100}));
+ await expect(caption).toHaveAttribute('data-kind','overlap');
+ await expect(caption.locator('.caption-cell')).toHaveCount(4);
+ await expect(caption.locator('.caption-actor')).toHaveCount(2);
+});
+
+test('lyric search navigates without sending, then card click sends and sets sequential preview',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('바람이 부는 아침');await expect(page.locator('.active-hit')).toContainText('바람이 부는 아침');await expect(page.locator('.live-label')).toContainText('— / 9');
+ await page.locator('.active-hit .block-text').click();await expect(page.locator('.live-label')).toContainText('007 / 9');await expect(page.locator('.preview-label')).toContainText('008');await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('searching a reviewed second source block starts the whole grouped slide',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);
+ d.productionId='search-group-fixture';d.title='검색 그룹 검증';
+ d.blocks[3].text='새로운 하루를 열어';
+ d.blocks.splice(4,0,{...d.blocks[3],id:'second-search-line',text:'우리의 길을 찾아가'});
+ d.frames[2].sourceBlockIds=['b4','second-search-line'];
+ await page.goto('/');
+ await page.getByRole('button',{name:'대본 관리'}).click();
+ await page.getByLabel('공연 데이터 파일').setInputFiles({name:'search-group.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});
+ await page.locator('.version').filter({hasText:'검색 그룹 검증'}).getByRole('button',{name:'활성화'}).click();
+ await expect(page.locator('.brand')).toContainText('검색 그룹 검증');
+ await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('우리의 길을 찾아가');
+ await expect(page.locator('#block-second-search-line')).toHaveClass(/active-hit/);
+ await page.locator('#block-second-search-line .block-text').click();
+ await expect(page.locator('.live-label')).toContainText('003 / 9');
+ await expect(page.locator('.cue-group.live [data-cue-status=LIVE]')).toHaveCount(2);
+ await go(page).click();
+ await expect(page.locator('.live-label')).toContainText('004 / 9');
+});
+
+test('quick E memo appends repeated reasons, protects typing and preserves current slide',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await go(page).click();
+ await page.getByRole('button',{name:'리허설 노트'}).click();await page.getByRole('button',{name:'새 리허설 시작'}).click();
+ await page.keyboard.press('e');const memo=page.getByRole('textbox',{name:'오류 메모'});await expect(memo).toBeFocused();
+ await memo.fill('첫 오류');await memo.press('Shift+Enter');await memo.press('b');await memo.press('e');await memo.press('Space');await memo.press('Enter');
+ await expect(page.getByRole('dialog',{name:'오류 메모'})).toHaveCount(0);
+ await expect(page.locator('.live-label')).toContainText('001 / 9');
+ await expect(page.locator('#block-b1 .error-mark')).toContainText('1회');
+ await page.keyboard.press('e');await expect(memo).toBeFocused();await memo.fill('두 번째 오류');await page.getByRole('button',{name:'저장 · Enter'}).click();
+ await expect(page.locator('#block-b1 .error-mark')).toContainText('2회');
+ await page.getByRole('button',{name:/REHEARSAL/}).click();
+ await expect(page.locator('.note-item')).toHaveCount(1);
+ await expect(page.locator('.note-item textarea').last()).toHaveValue('첫 오류\nbe\n두 번째 오류');
+});
+
+test('visual cue edits save repeatedly in one imported library slot, persist and search new captions',async({page})=>{
+ const {demo}=await import('../../src/demo.mjs');const d=structuredClone(demo);d.productionId='working-copy-test';d.title='단일 작업본 검증';d.revision='original-upload';
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
+ await page.getByRole('button',{name:'대본 관리'}).click();
+ await page.getByLabel('공연 데이터 파일').setInputFiles({name:'working-copy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(d))});
+ await page.locator('.version').filter({hasText:'단일 작업본 검증'}).getByRole('button',{name:'활성화'}).click();
+ await expect(page.locator('.brand')).toContainText('단일 작업본 검증');
+ const count=await page.locator('.version').count();
+ await page.getByRole('button',{name:'닫기',exact:true}).click();
+ const open=()=>page.locator('#block-b4').getByRole('button',{name:'큐 003 수정'}).click();
+ await open();const editor=page.getByRole('dialog',{name:'자막 편집'});
+ await editor.getByRole('textbox',{name:'가사 1',exact:true}).fill('수정된 첫 가사\n새로운 둘째 가사');
+ await expect(editor.locator('.cue-editor-preview > div').last().locator('.caption-cell')).toHaveText(['수정된 첫 가사','새로운 둘째 가사']);
+ await editor.getByRole('button',{name:'취소',exact:true}).click();
+ await expect(editor).toHaveCount(0);
+ await open();await editor.getByRole('textbox',{name:'가사 1',exact:true}).fill('수정된 첫 가사\n새로운 둘째 가사');
+ await editor.getByRole('button',{name:'저장',exact:true}).click();await expect(editor).toHaveCount(0);
+ await expect(page.locator('.edited-cue-caption')).toContainText('수정된 첫 가사');
+ await open();await editor.getByRole('textbox',{name:'가사 1',exact:true}).fill('최종 첫 가사\n새로운 둘째 가사');
+ await editor.getByRole('button',{name:'저장',exact:true}).click();await expect(editor).toHaveCount(0);
+ await page.getByRole('button',{name:'대본 관리'}).click();
+ await expect(page.locator('.version')).toHaveCount(count);
+ await expect(page.locator('.version').getByRole('button',{name:'사용 중'})).toHaveCount(1);
+ await expect(page.locator('.version').filter({hasText:'단일 작업본 검증'})).toHaveCount(1);
+ await expect(page.locator('.version').filter({hasText:'단일 작업본 검증'})).toContainText('original-upload');
+ await page.getByRole('button',{name:'닫기',exact:true}).click();
+ await expect(page.locator('#block-b4')).toContainText('새로운 하루를 열어');
+ await page.reload();await expect(page.locator('.edited-cue-caption')).toContainText('최종 첫 가사');
+ await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('최종 첫 가사');
+ await page.locator('.edited-cue-caption').click();
+ await expect(page.locator('.program-frame .caption-cell')).toHaveText(['최종 첫 가사','새로운 둘째 가사']);
+});
+
 test('delete inactive version with confirmation, active and demo protected, persistence after reload',async({page})=>{
  const {demo}=await import('../../src/demo.mjs');await page.goto('/');await page.getByRole('button',{name:'대본 관리'}).click();
  const file=page.getByLabel('공연 데이터 파일');
@@ -270,8 +391,4 @@ test('delete inactive version with confirmation, active and demo protected, pers
  await b.getByRole('button',{name:/삭제$/}).click();const confirm=page.getByRole('dialog',{name:'대본 삭제 확인'});await confirm.getByRole('button',{name:'취소',exact:true}).click();await expect(b).toBeVisible();
  await b.getByRole('button',{name:/삭제$/}).click();await confirm.getByRole('button',{name:'버전 삭제',exact:true}).click();await expect(b).toHaveCount(0);await expect(a).toBeVisible();
  await page.reload();await page.getByRole('button',{name:'대본 관리'}).click();await expect(b).toHaveCount(0);await expect(a.getByRole('button',{name:'사용 중'})).toBeDisabled();
-});
-test('lyric search navigates without sending, then card click sends and sets sequential preview',async({page})=>{
- await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('바람이 부는 아침');await expect(page.locator('.active-hit')).toContainText('바람이 부는 아침');await expect(page.locator('.live-label')).toContainText('— / 9');
- await page.locator('.active-hit .block-text').click();await expect(page.locator('.live-label')).toContainText('007 / 9');await expect(page.locator('.preview-label')).toContainText('008');await expect(page.getByRole('dialog')).toHaveCount(0);
 });

@@ -1,10 +1,12 @@
+import {presentCaption} from './caption-presentation.mjs';
 import {captionFamily} from './caption-fonts.mjs';
 import {captionTarget,MIN_SCALE} from './caption-scale.mjs';
 import {styleForRender,authoredLines} from './caption-style.mjs';
 import {autoWidths,equalWidths,readWidths} from './caption-widths.mjs';
 // Use the same canonical audience canvas for all previews, so AUTO ratios do not
 // drift with monitor pane size. Measure actual glyph advances with loaded fonts.
-export function measureLayout(view,font,scale,manual,typography){
+export function measureLayout(sourceView,font,scale,manual,typography){
+ const view=presentCaption(sourceView);
  const style=styleForRender(font,scale,typography);
  const n=view.columns.length;
  if(n<2)return {ratios:equalWidths(Math.max(n,1)),risk:false,shrink:false};
