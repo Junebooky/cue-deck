@@ -405,3 +405,12 @@ test('history undo redo, title rename, delete and add persist in same slot',asyn
  await page.reload();await expect(page.locator('.edited-cue-caption')).toContainText('신규 가사');await page.getByRole('button',{name:'넘버 검색',exact:true}).click();await expect(page.getByRole('dialog',{name:'넘버 검색'})).toContainText('M01. 새 넘버');await page.getByRole('button',{name:'닫기',exact:true}).click();
  await page.getByRole('button',{name:'대본 관리'}).click();await page.getByRole('button',{name:'수정 이력 · Undo / Redo'}).click();await expect(h).toContainText('큐 추가');await expect(h).toContainText('넘버 제목');
 });
+
+test('place preview is green only for next place cue, regular preview returns blue',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'대본 관리'})).toBeEnabled();
+ const label=page.locator('.preview-label'),preview=page.locator('.monitors .preview-frame');
+ await expect(label).toHaveAttribute('data-kind','place');await expect(label).toHaveCSS('color','rgb(168, 223, 189)');await expect(preview).toHaveCSS('border-top-color','rgb(168, 223, 189)');await expect(page.locator('.block.place.next')).toHaveCSS('background-color','rgb(35, 59, 48)');
+ await go(page).click();await expect(label).toHaveAttribute('data-kind','black');await expect(label).toHaveCSS('color','rgb(170, 195, 246)');await expect(preview).toHaveCSS('border-top-color','rgb(170, 195, 246)');
+ await go(page).click();await expect(label).toHaveAttribute('data-kind','solo');await expect(preview).toHaveCSS('border-top-color','rgb(170, 195, 246)');
+ await page.locator('#block-b7 .block-text').click();await expect(label).toHaveAttribute('data-kind','place');await expect(preview).toHaveCSS('border-top-color','rgb(168, 223, 189)');await go(page).click();await expect(label).toHaveAttribute('data-kind','solo');await expect(preview).toHaveCSS('border-top-color','rgb(170, 195, 246)');
+});

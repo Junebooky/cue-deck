@@ -190,3 +190,10 @@
 .search-cue-links{display:flex;gap:3px;max-width:40%;overflow:auto;white-space:nowrap}
 
 .show-history,.number-title-editor{display:flex;flex-direction:column;gap:10px}.history-entry,.number-title-row{border:1px solid var(--line,#38404c);border-radius:8px;padding:10px}.history-entry summary{cursor:pointer}.history-diff{display:grid;grid-template-columns:1fr 1fr;gap:8px}.history-diff pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#1d222b;padding:8px;font-size:12px;max-height:250px;overflow:auto}.history-diff pre:first-child{border-left:2px solid #b97980}.history-diff pre:last-child{border-left:2px solid #789bcf}.number-title-row{display:grid;grid-template-columns:1fr 1.5fr auto auto;gap:8px;align-items:center}.number-title-row label{display:flex;flex-direction:column;gap:4px}.number-title-row input{width:100%}
+
+/* Place/time next cue: green operator preview; audience and PROGRAM unchanged. */
+.console .monitors .preview-label[data-kind="place"]{color:#a8dfbd}
+.console .monitors .preview-frame[data-kind="place"]{border-color:#a8dfbd;box-shadow:0 2px 6px #0005,0 0 7px #a8dfbd29}
+.console .block.place.next:not(.live){--beam-base:#6bb58b;--beam-bright:#c1f0d2;--beam-fade:#6bb58b25;background:#233b30;border-color:#6bb58b;box-shadow:0 5px 10px #0007,0 0 9px #6bb58b25}
+.console .cue-tag.cue-place.armed:not(.on-air){outline-color:#6bb58b}
+.console .cue-tag.cue-place .cue-state.next{background:#36754e;color:#fff}
