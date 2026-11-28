@@ -55,8 +55,7 @@ try{
   assert.equal(await page.evaluate(async()=>{try{await window.deckAPI.editCue('demo',{});return false}catch{return true}}),true);
   await page.getByRole('button',{name:'대본 검색',exact:true}).click();
   await page.getByRole('textbox',{name:'대사 · 가사 검색'}).fill('우리의 길을 찾아가');
-  await page.getByRole('button',{name:'검색 위치 슬라이드 시작'}).click();
-  await page.getByRole('button',{name:'확인 · 슬라이드 시작'}).click();
+  await page.locator('#block-b4 .block-text').click();
   await captionCount(2);
   assert.equal((await page.evaluate(()=>window.deckAPI.state())).state.index,2);
   await page.locator('.transport .go').click();await captionCount(4);

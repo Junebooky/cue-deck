@@ -1,21 +1,15 @@
 import React,{useMemo,useState} from 'react';
-import OperatorCaption from './OperatorCaption.jsx';
 import {buildNumbers,searchNumbers} from './number-search.mjs';
-import {effectiveStyle} from './caption-style.mjs';
-import {cueWidths} from './caption-widths.mjs';
 const num=i=>String(i+1).padStart(3,'0');
-export default function NumberSearch({deck,settings,widths,busy,disabled,onPreview,onSend,error}){
- const [query,setQuery]=useState(''),[chosen,setChosen]=useState(null);
- const numbers=useMemo(()=>buildNumbers(deck),[deck]);
- const rows=searchNumbers(numbers,query),song=rows.find(n=>n.key===chosen)??null;
- const frame=song?.first==null?null:deck.frames[song.first],style=effectiveStyle(settings,frame);
+export default function NumberSearch({deck,busy,onLocate,error}){
+ const [query,setQuery]=useState('');
+ const numbers=useMemo(()=>buildNumbers(deck),[deck]),rows=searchNumbers(numbers,query);
  return <div className="number-search">
- <p>곡 제목이나 원본 M번호로 검색하세요. M05-1과 M05-2처럼 분리된 넘버도 원본 번호 그대로 표시됩니다. 곡의 첫 가사 큐를 선택하며, 장소와 드라마는 건너뜁니다. 검색 및 선택만으로는 관객 화면이 바뀌지 않습니다.</p>
- <input autoFocus type="search" aria-label="넘버 제목 또는 번호 검색" placeholder="예: M05-2, 사랑과 복수, 리프라이즈" value={query} onChange={e=>{setQuery(e.target.value);setChosen(null)}} onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();e.currentTarget.blur()}if(e.key==='Enter'&&!e.nativeEvent.isComposing){e.preventDefault();const first=rows.find(n=>n.first!==null);if(first)setChosen(first.key)}}}/>
+ <p>넘버를 선택하면 첫 가사 카드로 바로 이동합니다. 카드 클릭 시 즉시 송출되며, 검색만으로는 관객 화면이 바뀌지 않습니다.</p>
+ <input autoFocus type="search" aria-label="넘버 제목 또는 번호 검색" placeholder="넘버 제목 또는 M번호" value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();e.currentTarget.blur()}if(e.key==='Enter'&&!e.nativeEvent.isComposing){e.preventDefault();const first=rows.find(n=>n.first!==null);if(first&&!busy)onLocate(first.first)}}}/>
  <div className="muted">검색 결과 {rows.length}개 · 전체 {numbers.length}개</div>
- <div className="number-results">{rows.map(n=><button key={n.key} disabled={busy||n.first===null} aria-pressed={song?.key===n.key} onClick={()=>setChosen(n.key)}><b>{n.label}</b><small>ACT {n.act} · {n.scene}</small><span>{n.first===null?(n.catalogOnly?'목차에만 있음 · 송출 위치 미확정':'송출 가사 없음 · 이동 불가'):'CUE '+num(n.first)+' 시작 · 가사 큐 '+n.count+'개'}</span></button>)}</div>
+ <div className="number-results">{rows.map(n=><button key={n.key} disabled={busy||n.first===null} onClick={()=>onLocate(n.first)}><b>{n.label}</b><small>ACT {n.act} · {n.scene}</small><span>{n.first===null?(n.catalogOnly?'목차에만 있음 · 송출 위치 미확정':'송출 가사 없음 · 이동 불가'):'CUE '+num(n.first)+' 위치로 이동 · 가사 큐 '+n.count+'개'}</span></button>)}</div>
  {!rows.length&&<p>일치하는 넘버가 없습니다.</p>}
- {frame&&<><div className="width-editor-title"><b>{song.label}</b><span>CUE {num(song.first)} · 첫 가사</span></div><div className="width-preview"><OperatorCaption view={frame} variant="preview" exact scale={style.scale} font={style.font} typography={style} ratios={cueWidths(widths,frame)}/></div><p>확인을 누르면 이 곡의 첫 가사 슬라이드가 즉시 송출되고, 이후 기존 대본 순서대로 진행합니다.</p><div className="review-actions"><button disabled={busy} onClick={()=>onPreview(song.first)}>PREVIEW로 이동</button><button className="primary" disabled={disabled} onClick={()=>onSend(song.first)}>확인 · CUE {num(song.first)} 직접 송출</button></div></>}
  {error&&<p role="alert">{error}</p>}
  </div>
 }

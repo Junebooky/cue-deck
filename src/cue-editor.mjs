@@ -1,11 +1,12 @@
 import {validatePackage} from './model.mjs';
 import {buildCueGroups} from './cue-groups.mjs';
+import {readPerformance} from './performance-data.mjs';
 
 // A cue edit updates the working copy in the same library slot. Source dialogue, runs and IDs are not rewritten.
 export const editCount=deck=>Number.isSafeInteger(deck?.operatorEditCount)&&deck.operatorEditCount>=0?deck.operatorEditCount:0;
 export function readWorkingDeck(base,value){
- const next=validatePackage(value);
- if(next.productionId!==base.productionId||next.revision!==base.revision||next.title!==base.title||!Number.isSafeInteger(next.operatorEditCount)||next.operatorEditCount<1||JSON.stringify(next.blocks)!==JSON.stringify(base.blocks)||JSON.stringify(next.scenes)!==JSON.stringify(base.scenes)||next.frames.length!==base.frames.length||next.frames.some(f=>!base.frames.some(b=>b.id===f.id)))throw Error('저장된 편집 대본이 원본과 일치하지 않습니다.');
+ const next=validatePackage(value);const performance=readPerformance(next);
+ if(next.productionId!==base.productionId||next.revision!==base.revision||next.title!==base.title||(!performance&&(!Number.isSafeInteger(next.operatorEditCount)||next.operatorEditCount<1))||(next.operatorEditCount!==undefined&&(!Number.isSafeInteger(next.operatorEditCount)||next.operatorEditCount<0))||JSON.stringify(next.blocks)!==JSON.stringify(base.blocks)||JSON.stringify(next.scenes)!==JSON.stringify(base.scenes)||next.frames.length!==base.frames.length||next.frames.some(f=>!base.frames.some(b=>b.id===f.id)))throw Error('저장된 편집 대본이 원본과 일치하지 않습니다.');
  return next;
 }
 export function assertEditBase(deck,patch){if(patch?.expectedEditCount!==editCount(deck))throw Error('대본이 이미 수정되었습니다. 다시 열어 주세요.');}
